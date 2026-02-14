@@ -1,0 +1,57 @@
+# Terra-Form - Git Configuration
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+*.egg-info/
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+.pnp/
+.pnp.js
+
+# Next.js
+.next/
+out/
+
+# Environment
+.env
+.env.local
+.env*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build outputs
+dist/
+build/
+
+# Data files (will be large)
+*.tiff
+*.tif
+*.geojson
+data/satellite_images/
+data/processed/
+
+# Model files
+*.pth
+*.pt
+models/*.pth
+
+# Logs
+*.log
