@@ -2,26 +2,148 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --bg-primary: #0a0e1a;
+  --bg-secondary: #0f1629;
+  --bg-card: rgba(15, 22, 41, 0.8);
+  --border-subtle: rgba(255, 255, 255, 0.07);
+  --text-muted: #6b7280;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: #0a0e1a;
+  color: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0a0e1a;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e3a5f;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2563eb;
+}
+
+/* Glass card */
+.glass {
+  background: rgba(15, 22, 41, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Glow effects */
+.glow-blue {
+  box-shadow: 0 0 30px rgba(37, 99, 235, 0.15);
+}
+.glow-cyan {
+  box-shadow: 0 0 30px rgba(6, 182, 212, 0.15);
+}
+.glow-green {
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+}
+.glow-purple {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.15);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #60a5fa, #34d399, #818cf8);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Status badge */
+.badge-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+.badge-blue {
+  background: rgba(37, 99, 235, 0.15);
+  color: #60a5fa;
+  border: 1px solid rgba(37, 99, 235, 0.3);
+}
+.badge-purple {
+  background: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+.badge-cyan {
+  background: rgba(6, 182, 212, 0.15);
+  color: #22d3ee;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+.badge-gray {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+  border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+/* Input style */
+.input-dark {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1rem;
+  width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  outline: none;
+}
+.input-dark::placeholder {
+  color: #4b5563;
+}
+.input-dark:focus {
+  border-color: rgba(37, 99, 235, 0.6);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Button primary */
+.btn-primary {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: white;
+  font-weight: 600;
+  border-radius: 0.5rem;
+  padding: 0.625rem 1.5rem;
+  transition: all 0.2s;
+  border: 1px solid rgba(37, 99, 235, 0.5);
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 20px rgba(37, 99, 235, 0.3);
+}
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Subtle grid background */
+.grid-bg {
+  background-image: 
+    linear-gradient(rgba(37, 99, 235, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+

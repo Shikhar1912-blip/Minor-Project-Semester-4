@@ -76,202 +76,153 @@ export default function SatellitePage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-terra-dark via-gray-900 to-black text-white">
-      <div className="container mx-auto px-4 py-8">
+    <main className="min-h-screen grid-bg text-white">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-5xl font-bold mb-2 bg-gradient-to-r from-terra-blue via-terra-green to-blue-400 bg-clip-text text-transparent">
-            🛰️ Satellite Imagery
-          </h1>
-          <p className="text-gray-400 text-lg">
-            Week 2: Sentinel-2 API Integration
-          </p>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+            <a href="/" className="hover:text-gray-300 transition-colors">Home</a>
+            <span>/</span>
+            <span className="text-gray-300">Satellite Imagery</span>
+          </div>
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl">🛰️</div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Satellite Imagery</h1>
+              <p className="text-sm text-gray-500">Sentinel-2 real-time data · Week 2</p>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Column: Input Form */}
-          <div className="space-y-6">
-            {/* Fetch Image Card */}
-            <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-gray-700">
-              <h2 className="text-2xl font-semibold mb-4 flex items-center">
-                <span className="mr-2">📍</span>
-                Fetch Satellite Image
-              </h2>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Left Column: Controls */}
+          <div className="lg:col-span-2 space-y-5">
 
+            {/* Fetch Form */}
+            <div className="glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Fetch Image</h2>
               <form onSubmit={handleFetchImage} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-2">
-                    City Name
-                  </label>
+                  <label className="block text-xs font-medium text-gray-400 mb-1.5">City Name</label>
                   <input
                     type="text"
                     value={cityName}
                     onChange={(e) => setCityName(e.target.value)}
                     placeholder="e.g., Delhi, Mumbai, New York"
-                    className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-terra-blue text-white placeholder-gray-400"
+                    className="input-dark"
                   />
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`w-full py-3 px-6 rounded-lg font-semibold transition-all transform ${
-                    loading
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-gradient-to-r from-terra-blue to-blue-600 hover:from-blue-600 hover:to-terra-blue hover:scale-105'
-                  }`}
-                >
+                <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-2">
                   {loading ? (
-                    <span className="flex items-center justify-center">
-                      <span className="animate-spin mr-2">🛸</span>
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                       Downloading from satellite...
-                    </span>
+                    </>
                   ) : (
-                    <span>🛰️ Fetch Satellite Image</span>
+                    <>
+                      <span>🛰️</span> Fetch Satellite Image
+                    </>
                   )}
                 </button>
               </form>
 
               {error && (
-                <div className="mt-4 bg-red-900/30 border border-red-500 rounded-lg p-4">
-                  <p className="text-red-300 flex items-center">
-                    <span className="mr-2">❌</span>
-                    {error}
-                  </p>
+                <div className="mt-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+                  <p className="text-sm text-red-400 flex items-center gap-2"><span>⚠️</span>{error}</p>
                 </div>
               )}
             </div>
 
-            {/* Available Cities */}
-            <div className="bg-blue-900/20 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-blue-700">
-              <h3 className="text-xl font-semibold mb-3 text-blue-300">
-                📋 Available Cities
-              </h3>
+            {/* City chips */}
+            <div className="glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Available Cities</h2>
               <div className="flex flex-wrap gap-2">
                 {availableCities.map((city) => (
                   <button
                     key={city}
                     onClick={() => setCityName(city)}
-                    className="px-3 py-1 bg-blue-900/50 hover:bg-blue-800/50 rounded-full text-sm transition-colors border border-blue-700"
+                    className="px-3 py-1 text-xs rounded-full badge-blue hover:bg-blue-500/20 transition-colors"
                   >
                     {city}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-gray-400 mt-3">
-                💡 Tip: Click a city name to auto-fill
-              </p>
+              <p className="text-xs text-gray-600 mt-3">Click to auto-fill</p>
             </div>
 
             {/* Metadata */}
             {metadata && (
-              <div className="bg-purple-900/20 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-purple-700">
-                <h3 className="text-xl font-semibold mb-3 text-purple-300">
-                  📊 Image Metadata
-                </h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Location:</span>
-                    <span className="text-white font-mono">
-                      {metadata.location.latitude.toFixed(4)}°, {metadata.location.longitude.toFixed(4)}°
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Resolution:</span>
-                    <span className="text-white">{metadata.resolution_meters}m per pixel</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Image Size:</span>
-                    <span className="text-white">
-                      {metadata.image_size.width} × {metadata.image_size.height} px
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-400">Date Range:</span>
-                    <span className="text-white text-xs">
-                      {new Date(metadata.date_range.start).toLocaleDateString()} - 
-                      {new Date(metadata.date_range.end).toLocaleDateString()}
-                    </span>
-                  </div>
+              <div className="glass rounded-2xl p-5 border border-purple-500/15">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Image Metadata</h2>
+                <div className="space-y-3">
+                  {[
+                    { label: 'Coordinates', value: `${metadata.location.latitude.toFixed(4)}°, ${metadata.location.longitude.toFixed(4)}°` },
+                    { label: 'Resolution', value: `${metadata.resolution_meters}m / pixel` },
+                    { label: 'Dimensions', value: `${metadata.image_size.width} × ${metadata.image_size.height} px` },
+                    { label: 'Date Range', value: `${new Date(metadata.date_range.start).toLocaleDateString()} – ${new Date(metadata.date_range.end).toLocaleDateString()}` },
+                  ].map(item => (
+                    <div key={item.label} className="flex items-center justify-between">
+                      <span className="text-xs text-gray-500">{item.label}</span>
+                      <span className="text-xs text-gray-200 font-mono">{item.value}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
           </div>
 
-          {/* Right Column: Image Display */}
-          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-gray-700">
-            <h2 className="text-2xl font-semibold mb-4 flex items-center">
-              <span className="mr-2">🖼️</span>
-              Satellite View
-            </h2>
-
-            {!imageUrl && !loading && (
-              <div className="aspect-square bg-gray-700/50 rounded-lg flex items-center justify-center border-2 border-dashed border-gray-600">
-                <div className="text-center text-gray-400">
-                  <div className="text-6xl mb-4">🛰️</div>
-                  <p className="text-lg">No image loaded</p>
-                  <p className="text-sm mt-2">Enter a city name and click fetch</p>
-                </div>
+          {/* Right Column: Image */}
+          <div className="lg:col-span-3">
+            <div className="glass rounded-2xl border border-white/5 overflow-hidden h-full min-h-[500px] flex flex-col">
+              <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-gray-300">Satellite View</h2>
+                {imageUrl && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span className="text-xs text-emerald-400">Live</span>
+                  </div>
+                )}
               </div>
-            )}
 
-            {loading && (
-              <div className="aspect-square bg-gray-700/50 rounded-lg flex items-center justify-center">
-                <div className="text-center text-gray-400">
-                  <div className="text-6xl mb-4 animate-bounce">🛸</div>
-                  <p className="text-lg">Downloading from space...</p>
-                  <p className="text-sm mt-2">This may take 15-30 seconds</p>
-                  <div className="mt-4">
-                    <div className="w-48 h-2 bg-gray-700 rounded-full overflow-hidden mx-auto">
-                      <div className="h-full bg-gradient-to-r from-terra-blue to-terra-green animate-pulse"></div>
+              <div className="flex-1 flex items-center justify-center p-5">
+                {!imageUrl && !loading && (
+                  <div className="text-center text-gray-600">
+                    <div className="text-5xl mb-4 opacity-40">🛰️</div>
+                    <p className="text-sm">No image loaded</p>
+                    <p className="text-xs mt-1">Enter a city name and click fetch</p>
+                  </div>
+                )}
+
+                {loading && (
+                  <div className="text-center text-gray-500">
+                    <div className="text-5xl mb-5 animate-bounce">🛸</div>
+                    <p className="text-sm font-medium text-gray-300">Downloading from space...</p>
+                    <p className="text-xs mt-1.5 mb-5">This may take 15–30 seconds</p>
+                    <div className="w-48 h-1 bg-gray-800 rounded-full overflow-hidden mx-auto">
+                      <div className="h-full w-1/2 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full animate-pulse"></div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
+                )}
 
-            {imageUrl && (
-              <div className="space-y-4">
-                <div className="relative rounded-lg overflow-hidden border-2 border-gray-600">
-                  <img
-                    src={imageUrl}
-                    alt="Satellite imagery"
-                    className="w-full h-auto"
-                    onError={() => setError('Failed to load image')}
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <a
-                    href={imageUrl}
-                    download
-                    className="flex-1 bg-green-600 hover:bg-green-700 py-2 px-4 rounded-lg font-semibold text-center transition-colors"
-                  >
-                    💾 Download Image
-                  </a>
-                  <button
-                    onClick={() => {
-                      setImageUrl(null)
-                      setMetadata(null)
-                      setCityName('')
-                    }}
-                    className="flex-1 bg-gray-600 hover:bg-gray-700 py-2 px-4 rounded-lg font-semibold transition-colors"
-                  >
-                    🔄 Clear
-                  </button>
-                </div>
+                {imageUrl && (
+                  <div className="w-full space-y-4">
+                    <div className="rounded-xl overflow-hidden border border-white/10">
+                      <img src={imageUrl} alt="Satellite imagery" className="w-full h-auto" onError={() => setError('Failed to load image')} />
+                    </div>
+                    <div className="flex gap-3">
+                      <a href={imageUrl} download className="flex-1 py-2.5 rounded-lg text-sm font-medium text-center bg-emerald-600/80 hover:bg-emerald-600 transition-colors">
+                        💾 Download
+                      </a>
+                      <button onClick={() => { setImageUrl(null); setMetadata(null); setCityName('') }} className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-white/5 hover:bg-white/10 transition-colors">
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-
-        {/* Back Button */}
-        <div className="mt-8 text-center">
-          <a
-            href="/"
-            className="inline-block bg-gray-700 hover:bg-gray-600 px-6 py-3 rounded-lg font-semibold transition-colors"
-          >
-            ← Back to Home
-          </a>
         </div>
       </div>
     </main>

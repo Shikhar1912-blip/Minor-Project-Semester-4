@@ -174,192 +174,175 @@ export default function ModelPage() {
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-6">
-      {/* Header */}
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-8">
-          <a href="/" className="text-blue-400 hover:text-blue-300 text-sm">← Back to Dashboard</a>
-          <h1 className="text-3xl font-bold mt-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            🧠 Deep Learning — U-Net Flood Segmentation
-          </h1>
-          <p className="text-gray-400 mt-1">Week 5 · Train a U-Net on your satellite images, then run predictions</p>
-        </div>
+    <main className="min-h-screen grid-bg text-white">
+      <div className="max-w-6xl mx-auto px-6 py-10">
 
-        {/* Model Status Bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          {[
-            { label: 'Model',       value: modelInfo?.status === 'ready' ? '✅ Trained' : '⏳ Not trained' },
-            { label: 'Best IoU',    value: modelInfo?.val_iou != null ? modelInfo.val_iou.toFixed(4) : '—' },
-            { label: 'Best F1',     value: modelInfo?.val_f1  != null ? modelInfo.val_f1.toFixed(4)  : '—' },
-            { label: 'Model Size',  value: modelInfo?.model_size_kb ? `${modelInfo.model_size_kb} KB` : '—' },
-          ].map(card => (
-            <div key={card.label} className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-              <p className="text-xs text-gray-400 uppercase tracking-wide">{card.label}</p>
-              <p className="text-lg font-bold mt-1">{card.value}</p>
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+            <a href="/" className="hover:text-gray-300 transition-colors">Home</a>
+            <span>/</span>
+            <span className="text-gray-300">Deep Learning Model</span>
+          </div>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-xl">🧠</div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">U-Net Flood Segmentation</h1>
+              <p className="text-sm text-gray-500">Deep learning model · Week 5</p>
             </div>
-          ))}
+          </div>
+
+          {/* Model stats bar */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {[
+              { label: 'Model Status', value: modelInfo?.status === 'ready' ? 'Trained ✓' : 'Not trained', color: modelInfo?.status === 'ready' ? 'text-emerald-400' : 'text-gray-400' },
+              { label: 'Best IoU',     value: modelInfo?.val_iou != null ? modelInfo.val_iou.toFixed(4) : '—', color: 'text-blue-400' },
+              { label: 'Best F1',      value: modelInfo?.val_f1  != null ? modelInfo.val_f1.toFixed(4)  : '—', color: 'text-purple-400' },
+              { label: 'Model Size',   value: modelInfo?.model_size_kb ? `${modelInfo.model_size_kb} KB` : '—', color: 'text-gray-300' },
+            ].map(card => (
+              <div key={card.label} className="glass rounded-xl p-4 border border-white/5">
+                <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">{card.label}</p>
+                <p className={`text-lg font-bold ${card.color}`}>{card.value}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="flex gap-2 mb-6">
-          {(['train', 'predict'] as const).map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-5 py-2 rounded-lg font-semibold capitalize transition-colors ${
-                activeTab === tab
-                  ? 'bg-purple-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-              }`}
-            >
-              {tab === 'train' ? '🏋️ Train Model' : '🔍 Run Prediction'}
+          {([
+            { id: 'train', label: 'Train Model', icon: '🏋️' },
+            { id: 'predict', label: 'Run Prediction', icon: '🔍' },
+          ] as const).map(tab => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                activeTab === tab.id
+                  ? 'bg-purple-600/30 text-purple-300 border border-purple-500/30'
+                  : 'text-gray-400 hover:text-gray-200 hover:bg-white/5 border border-transparent'
+              }`}>
+              {tab.icon} {tab.label}
             </button>
           ))}
         </div>
 
         {error && (
-          <div className="mb-6 bg-red-900/50 border border-red-500 rounded-lg p-4 text-red-200">
-            ❌ {error}
+          <div className="mb-5 glass rounded-xl p-4 border border-red-500/20 bg-red-500/5">
+            <p className="text-sm text-red-400">⚠️ {error}</p>
           </div>
         )}
 
         {/* ── TRAIN TAB ─────────────────────────────────────────────── */}
         {activeTab === 'train' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
-            {/* Config panel */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">⚙️ Training Configuration</h2>
-
+            {/* Config */}
+            <div className="lg:col-span-2 glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Training Configuration</h2>
               <div className="space-y-4">
-                {/* Epochs */}
                 <div>
-                  <label className="text-sm text-gray-400">Epochs: <span className="text-white font-bold">{config.epochs}</span></label>
+                  <label className="text-xs text-gray-400">Epochs: <span className="text-white font-mono">{config.epochs}</span></label>
                   <input type="range" min={5} max={50} step={5} value={config.epochs}
                     onChange={e => setConfig(c => ({ ...c, epochs: +e.target.value }))}
-                    className="w-full mt-1" />
+                    className="w-full mt-1.5 accent-purple-500" />
                 </div>
-
-                {/* Batch size */}
                 <div>
-                  <label className="text-sm text-gray-400">Batch Size</label>
+                  <label className="text-xs text-gray-400 block mb-1.5">Batch Size</label>
                   <select value={config.batch_size}
                     onChange={e => setConfig(c => ({ ...c, batch_size: +e.target.value }))}
-                    className="w-full mt-1 bg-gray-700 text-white rounded-lg px-3 py-2">
+                    className="input-dark">
                     {[2, 4, 8].map(v => <option key={v}>{v}</option>)}
                   </select>
                 </div>
-
-                {/* Learning rate */}
                 <div>
-                  <label className="text-sm text-gray-400">Learning Rate</label>
+                  <label className="text-xs text-gray-400 block mb-1.5">Learning Rate</label>
                   <select value={config.learning_rate}
                     onChange={e => setConfig(c => ({ ...c, learning_rate: +e.target.value }))}
-                    className="w-full mt-1 bg-gray-700 text-white rounded-lg px-3 py-2">
+                    className="input-dark">
                     {[0.001, 0.0001, 0.00001].map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
-
-                {/* NDWI threshold */}
                 <div>
-                  <label className="text-sm text-gray-400">
-                    NDWI Threshold (label generation): <span className="text-white font-bold">{config.ndwi_threshold}</span>
-                  </label>
+                  <label className="text-xs text-gray-400">NDWI Threshold: <span className="text-white font-mono">{config.ndwi_threshold}</span></label>
                   <input type="range" min={0.1} max={0.6} step={0.05} value={config.ndwi_threshold}
                     onChange={e => setConfig(c => ({ ...c, ndwi_threshold: +e.target.value }))}
-                    className="w-full mt-1" />
+                    className="w-full mt-1.5 accent-purple-500" />
                 </div>
-
-                {/* Validation split */}
                 <div>
-                  <label className="text-sm text-gray-400">
-                    Validation Split: <span className="text-white font-bold">{Math.round(config.val_split * 100)}%</span>
-                  </label>
+                  <label className="text-xs text-gray-400">Validation Split: <span className="text-white font-mono">{Math.round(config.val_split * 100)}%</span></label>
                   <input type="range" min={0.1} max={0.4} step={0.05} value={config.val_split}
                     onChange={e => setConfig(c => ({ ...c, val_split: +e.target.value }))}
-                    className="w-full mt-1" />
+                    className="w-full mt-1.5 accent-purple-500" />
                 </div>
               </div>
-
-              <button
-                onClick={handleStartTraining}
-                disabled={trainStatus?.is_training}
-                className="w-full mt-6 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-colors"
-              >
-                {trainStatus?.is_training ? '⏳ Training in progress…' : '🚀 Start Training'}
+              <button onClick={handleStartTraining} disabled={trainStatus?.is_training}
+                className="btn-primary w-full mt-5 flex items-center justify-center gap-2" style={{background: trainStatus?.is_training ? undefined : 'linear-gradient(135deg,#7c3aed,#9333ea)'}}>
+                {trainStatus?.is_training
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Training…</>
+                  : '🚀 Start Training'}
               </button>
-
-              {/* Info box */}
-              <div className="mt-4 bg-purple-900/30 border border-purple-700 rounded-lg p-3">
-                <p className="text-xs text-purple-300 font-semibold mb-1">ℹ️ How it works</p>
-                <ul className="text-xs text-purple-200 space-y-1">
-                  <li>• Cuts satellite images into 256×256 patches</li>
-                  <li>• Uses NDWI to auto-generate water labels</li>
-                  <li>• Trains a U-Net with BCE + Dice loss</li>
-                  <li>• Saves best checkpoint by validation IoU</li>
-                </ul>
+              <div className="mt-4 rounded-xl bg-purple-500/5 border border-purple-500/15 p-3">
+                <p className="text-xs text-purple-300 font-semibold mb-2">How it works</p>
+                <div className="space-y-1 text-xs text-gray-400">
+                  <p>• Cuts images into 256×256 patches</p>
+                  <p>• Auto-generates flood labels via NDWI</p>
+                  <p>• Trains U-Net with BCE + Dice loss</p>
+                  <p>• Saves best checkpoint by validation IoU</p>
+                </div>
               </div>
             </div>
 
-            {/* Training progress */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">📈 Training Progress</h2>
-
+            {/* Progress */}
+            <div className="lg:col-span-3 glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Training Progress</h2>
               {trainStatus ? (
                 <>
-                  <p className={`text-sm font-semibold mb-3 ${statusColor(trainStatus.status)}`}>
-                    Status: {trainStatus.status.toUpperCase()}
-                  </p>
-                  <p className="text-sm text-gray-400 mb-4">{trainStatus.message}</p>
-
-                  {/* Progress bar */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`text-sm font-semibold ${statusColor(trainStatus.status)}`}>
+                      {trainStatus.status.toUpperCase()}
+                    </span>
+                    <span className="text-xs text-gray-500">{trainStatus.message}</span>
+                  </div>
+                  <div className="mb-5">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1.5">
                       <span>Epoch {trainStatus.epoch} / {trainStatus.total_epochs}</span>
                       <span>{progressPct}%</span>
                     </div>
-                    <div className="w-full bg-gray-700 rounded-full h-3">
-                      <div
-                        className="bg-gradient-to-r from-purple-500 to-pink-500 h-3 rounded-full transition-all duration-500"
-                        style={{ width: `${progressPct}%` }}
-                      />
+                    <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                        style={{ width: `${progressPct}%` }} />
                     </div>
                   </div>
-
-                  {/* Live metrics */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="grid grid-cols-2 gap-3 mb-5">
                     {[
                       { label: 'Train Loss', value: trainStatus.train_loss?.toFixed(4) ?? '—' },
                       { label: 'Val Loss',   value: trainStatus.val_loss?.toFixed(4)   ?? '—' },
                       { label: 'Val IoU',    value: trainStatus.val_iou?.toFixed(4)    ?? '—' },
                       { label: 'Val F1',     value: trainStatus.val_f1?.toFixed(4)     ?? '—' },
                     ].map(m => (
-                      <div key={m.label} className="bg-gray-700 rounded-lg p-3">
-                        <p className="text-xs text-gray-400">{m.label}</p>
-                        <p className="text-lg font-bold">{m.value}</p>
+                      <div key={m.label} className="rounded-xl bg-white/3 border border-white/5 p-3">
+                        <p className="text-xs text-gray-500">{m.label}</p>
+                        <p className="text-xl font-bold text-white">{m.value}</p>
                       </div>
                     ))}
                   </div>
-
-                  {/* History table */}
                   {trainStatus.history?.length > 0 && (
-                    <div className="overflow-y-auto max-h-48">
-                      <table className="w-full text-xs text-gray-300">
-                        <thead>
-                          <tr className="text-gray-500 border-b border-gray-700">
+                    <div className="overflow-y-auto max-h-44 rounded-xl border border-white/5">
+                      <table className="w-full text-xs">
+                        <thead className="sticky top-0 bg-gray-900/80">
+                          <tr className="text-gray-500">
                             {['Epoch','T-Loss','V-Loss','IoU','F1'].map(h => (
-                              <th key={h} className="pb-1 text-center">{h}</th>
+                              <th key={h} className="py-2 px-3 text-center font-medium">{h}</th>
                             ))}
                           </tr>
                         </thead>
                         <tbody>
                           {[...trainStatus.history].reverse().map(row => (
-                            <tr key={row.epoch} className="border-b border-gray-800">
-                              <td className="py-1 text-center">{row.epoch}</td>
-                              <td className="py-1 text-center">{row.train_loss}</td>
-                              <td className="py-1 text-center">{row.val_loss}</td>
-                              <td className="py-1 text-center text-green-400">{row.val_iou}</td>
-                              <td className="py-1 text-center text-blue-400">{row.val_f1}</td>
+                            <tr key={row.epoch} className="border-t border-white/5 hover:bg-white/3">
+                              <td className="py-1.5 px-3 text-center text-gray-400">{row.epoch}</td>
+                              <td className="py-1.5 px-3 text-center text-gray-300">{row.train_loss}</td>
+                              <td className="py-1.5 px-3 text-center text-gray-300">{row.val_loss}</td>
+                              <td className="py-1.5 px-3 text-center text-emerald-400 font-medium">{row.val_iou}</td>
+                              <td className="py-1.5 px-3 text-center text-blue-400 font-medium">{row.val_f1}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -368,7 +351,7 @@ export default function ModelPage() {
                   )}
                 </>
               ) : (
-                <p className="text-gray-500 text-sm">No training started yet.</p>
+                <div className="flex items-center justify-center h-32 text-gray-600 text-sm">No training started yet</div>
               )}
             </div>
           </div>
@@ -376,98 +359,79 @@ export default function ModelPage() {
 
         {/* ── PREDICT TAB ──────────────────────────────────────────── */}
         {activeTab === 'predict' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
 
             {/* Controls */}
-            <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-              <h2 className="text-xl font-semibold mb-4">🔍 Run Flood Prediction</h2>
+            <div className="lg:col-span-2 space-y-5">
+              <div className="glass rounded-2xl p-5 border border-white/5">
+                <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Run Prediction</h2>
 
-              {modelInfo?.status !== 'ready' && (
-                <div className="mb-4 bg-yellow-900/40 border border-yellow-600 rounded-lg p-3 text-yellow-200 text-sm">
-                  ⚠️ No trained model found. Train a model on the Train tab first.
-                </div>
-              )}
+                {modelInfo?.status !== 'ready' && (
+                  <div className="mb-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3">
+                    <p className="text-xs text-yellow-300">⚠️ No trained model found. Train a model first.</p>
+                  </div>
+                )}
 
-              {/* Image selector */}
-              <div className="mb-4">
-                <label className="block text-sm text-gray-400 mb-1">Satellite Image</label>
-                <select value={selectedImage}
-                  onChange={e => setSelected(e.target.value)}
-                  className="w-full bg-gray-700 text-white rounded-lg px-3 py-2">
-                  {images.length === 0
-                    ? <option>No images available</option>
-                    : images.map(img => (
-                        <option key={img.filename} value={img.filename}>
-                          {img.filename} ({img.size_mb} MB)
-                        </option>
-                      ))
-                  }
-                </select>
-              </div>
-
-              {/* Threshold */}
-              <div className="mb-6">
-                <label className="text-sm text-gray-400">
-                  Prediction Threshold: <span className="text-white font-bold">{threshold}</span>
-                </label>
-                <input type="range" min={0.1} max={0.9} step={0.05} value={threshold}
-                  onChange={e => setThreshold(+e.target.value)}
-                  className="w-full mt-1" />
-                <div className="flex justify-between text-xs text-gray-500 mt-1">
-                  <span>0.1 (sensitive)</span><span>0.9 (strict)</span>
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1.5">Satellite Image</label>
+                    <select value={selectedImage} onChange={e => setSelected(e.target.value)} className="input-dark">
+                      {images.length === 0
+                        ? <option>No images available</option>
+                        : images.map(img => (
+                            <option key={img.filename} value={img.filename}>{img.filename} ({img.size_mb} MB)</option>
+                          ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Threshold: <span className="text-white font-mono">{threshold}</span></label>
+                    <input type="range" min={0.1} max={0.9} step={0.05} value={threshold}
+                      onChange={e => setThreshold(+e.target.value)}
+                      className="w-full mt-1.5 accent-purple-500" />
+                    <div className="flex justify-between text-xs text-gray-600 mt-1"><span>Sensitive</span><span>Strict</span></div>
+                  </div>
+                  <button onClick={handlePredict} disabled={predLoading || !selectedImage || modelInfo?.status !== 'ready'}
+                    className="btn-primary w-full flex items-center justify-center gap-2" style={{background: 'linear-gradient(135deg,#059669,#10b981)'}}>
+                    {predLoading
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Running…</>
+                      : '▶ Predict Flood'}
+                  </button>
                 </div>
               </div>
 
-              <button
-                onClick={handlePredict}
-                disabled={predLoading || !selectedImage || modelInfo?.status !== 'ready'}
-                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-600 text-white py-3 rounded-lg font-semibold transition-colors"
-              >
-                {predLoading ? '⏳ Running prediction…' : '▶️ Predict Flood'}
-              </button>
-
-              {/* Comparison note */}
-              <div className="mt-4 bg-gray-700 rounded-lg p-3">
-                <p className="text-xs text-gray-300 font-semibold mb-1">💡 U-Net vs NDWI</p>
-                <p className="text-xs text-gray-400">
-                  The U-Net was trained on NDWI labels so it learns spatial patterns beyond
-                  simple thresholding — detecting flood edges, shadows, and mixed pixels more accurately.
-                </p>
+              <div className="glass rounded-2xl p-5 border border-purple-500/10">
+                <p className="text-xs text-purple-300 font-semibold uppercase tracking-wider mb-2">U-Net vs NDWI</p>
+                <p className="text-xs text-gray-400 leading-relaxed">The U-Net learns spatial patterns beyond simple thresholding — detecting flood edges, shadows, and mixed pixels more accurately.</p>
               </div>
             </div>
 
             {/* Results */}
-            <div className="space-y-4">
+            <div className="lg:col-span-3 space-y-5">
               {predResult ? (
                 <>
-                  {/* Stats */}
-                  <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                    <h2 className="text-xl font-semibold mb-4">📊 Prediction Statistics</h2>
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="glass rounded-2xl p-5 border border-white/5">
+                    <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Prediction Statistics</h2>
+                    <div className="grid grid-cols-2 gap-3 mb-3">
                       {[
-                        { label: 'Water Area',   value: `${predResult.statistics.water_area_km2.toFixed(3)} km²`, color: 'text-blue-400' },
-                        { label: 'Coverage',     value: `${predResult.statistics.water_percentage.toFixed(2)}%`,  color: 'text-cyan-400' },
-                        { label: 'Water Pixels', value: predResult.statistics.water_pixels.toLocaleString(),       color: 'text-purple-400' },
-                        { label: 'Mean Prob',    value: predResult.statistics.mean_probability.toFixed(4),         color: 'text-yellow-400' },
+                        { label: 'Water Area',   value: `${predResult.statistics.water_area_km2.toFixed(3)} km²`, color: 'text-cyan-400' },
+                        { label: 'Coverage',     value: `${predResult.statistics.water_percentage.toFixed(2)}%`, color: 'text-blue-400' },
+                        { label: 'Water Pixels', value: predResult.statistics.water_pixels.toLocaleString(), color: 'text-purple-400' },
+                        { label: 'Mean Prob',    value: predResult.statistics.mean_probability.toFixed(4), color: 'text-emerald-400' },
                       ].map(s => (
-                        <div key={s.label} className="bg-gray-700 rounded-lg p-3">
-                          <p className="text-xs text-gray-400">{s.label}</p>
-                          <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+                        <div key={s.label} className="rounded-xl bg-white/3 border border-white/5 p-3">
+                          <p className="text-xs text-gray-500">{s.label}</p>
+                          <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
                         </div>
                       ))}
                     </div>
-
                     {predResult.metadata && (
-                      <p className="mt-3 text-xs text-gray-500">
-                        Model: Epoch {predResult.metadata.epoch} · IoU {predResult.metadata.val_iou} · F1 {predResult.metadata.val_f1}
-                      </p>
+                      <p className="text-xs text-gray-600">Model: Epoch {predResult.metadata.epoch} · IoU {predResult.metadata.val_iou} · F1 {predResult.metadata.val_f1}</p>
                     )}
                   </div>
 
-                  {/* Visualisations */}
                   {predResult.saved_files && (
-                    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-                      <h2 className="text-xl font-semibold mb-4">🗺️ Visualisations</h2>
+                    <div className="glass rounded-2xl p-5 border border-white/5">
+                      <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Visualisations</h2>
                       <div className="space-y-4">
                         {[
                           { key: 'heatmap',    label: 'Probability Heatmap' },
@@ -476,12 +440,9 @@ export default function ModelPage() {
                         ].map(({ key, label }) => (
                           predResult.saved_files![key as keyof typeof predResult.saved_files] && (
                             <div key={key}>
-                              <p className="text-sm text-gray-400 mb-1">{label}</p>
-                              <img
-                                src={`${API_URL}/api/model/predictions/${predResult.saved_files![key as keyof typeof predResult.saved_files]}`}
-                                alt={label}
-                                className="w-full rounded-lg border border-gray-600"
-                              />
+                              <p className="text-xs text-gray-400 mb-2">{label}</p>
+                              <img src={`${API_URL}/api/model/predictions/${predResult.saved_files![key as keyof typeof predResult.saved_files]}`}
+                                alt={label} className="w-full rounded-xl border border-white/10" />
                             </div>
                           )
                         ))}
@@ -490,15 +451,17 @@ export default function ModelPage() {
                   )}
                 </>
               ) : (
-                <div className="bg-gray-800 rounded-xl p-6 border border-gray-700 text-center text-gray-500">
-                  <p className="text-4xl mb-2">🧠</p>
-                  <p>Select an image and click Predict Flood to see the U-Net results here.</p>
+                <div className="glass rounded-2xl border border-dashed border-white/10 p-16 text-center">
+                  <div className="text-5xl mb-4 opacity-30">🧠</div>
+                  <p className="text-sm text-gray-500">Run a prediction to see U-Net results here</p>
                 </div>
               )}
             </div>
           </div>
         )}
+
       </div>
-    </div>
+    </main>
   )
 }
+

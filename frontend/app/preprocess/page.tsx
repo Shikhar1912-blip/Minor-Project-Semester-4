@@ -122,260 +122,183 @@ export default function PreprocessingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 p-8">
-      <div className="max-w-7xl mx-auto">
+    <main className="min-h-screen grid-bg text-white">
+      <div className="max-w-6xl mx-auto px-6 py-10">
+
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            🔧 Image Pre-processing
-          </h1>
-          <p className="text-gray-600">
-            Tile, normalize, and extract bands from satellite imagery
-          </p>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+            <a href="/" className="hover:text-gray-300 transition-colors">Home</a>
+            <span>/</span>
+            <span className="text-gray-300">Image Pre-processing</span>
+          </div>
+          <div className="flex items-center gap-3 mb-1">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-xl">🔧</div>
+            <div>
+              <h1 className="text-3xl font-bold text-white">Image Pre-processing</h1>
+              <p className="text-sm text-gray-500">Tiling · Normalisation · Band extraction · Week 3</p>
+            </div>
+          </div>
         </div>
 
-        {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          
-          {/* Left Column: Configuration */}
-          <div className="space-y-6">
-            
-            {/* Image Selection Card */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">📁 Select Image</h2>
-              
+        {error && (
+          <div className="mb-5 glass rounded-xl p-4 border border-red-500/20 bg-red-500/5">
+            <p className="text-sm text-red-400">⚠️ {error}</p>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-5">
+
+          {/* ── LEFT: Config ──────────────────────────────────────── */}
+          <div className="lg:col-span-2 space-y-5">
+
+            {/* Image selection */}
+            <div className="glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Select Image</h2>
+
               {images.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500 mb-4">No satellite images found</p>
-                  <a 
-                    href="/satellite" 
-                    className="text-blue-600 hover:underline"
-                  >
+                <div className="text-center py-6">
+                  <p className="text-sm text-gray-500 mb-3">No satellite images found</p>
+                  <a href="/satellite" className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
                     Download satellite images first →
                   </a>
                 </div>
               ) : (
-                <select
-                  value={selectedImage}
-                  onChange={(e) => setSelectedImage(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  {images.map((img) => (
-                    <option key={img.filename} value={img.filename}>
-                      {img.filename} ({img.size_mb} MB)
-                    </option>
-                  ))}
-                </select>
-              )}
-
-              {images.length > 0 && (
-                <button
-                  onClick={fetchAvailableImages}
-                  className="mt-3 text-sm text-blue-600 hover:underline"
-                >
-                  🔄 Refresh list
-                </button>
+                <>
+                  <select value={selectedImage} onChange={e => setSelectedImage(e.target.value)} className="input-dark mb-2">
+                    {images.map(img => (
+                      <option key={img.filename} value={img.filename}>{img.filename} ({img.size_mb} MB)</option>
+                    ))}
+                  </select>
+                  <button onClick={fetchAvailableImages} className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+                    ↻ Refresh list
+                  </button>
+                </>
               )}
             </div>
 
-            {/* Processing Options Card */}
-            <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-semibold mb-4">⚙️ Processing Options</h2>
-              
+            {/* Processing options */}
+            <div className="glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Processing Options</h2>
+
               <form onSubmit={handleProcessImage} className="space-y-4">
-                
-                {/* Tile Size */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tile Size: {tileSize}x{tileSize} pixels
-                  </label>
-                  <input
-                    type="range"
-                    min="256"
-                    max="1024"
-                    step="256"
-                    value={tileSize}
-                    onChange={(e) => setTileSize(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>256</span>
-                    <span>512</span>
-                    <span>768</span>
-                    <span>1024</span>
+                  <label className="text-xs text-gray-400">Tile Size: <span className="text-white font-mono">{tileSize}×{tileSize}</span> px</label>
+                  <input type="range" min={256} max={1024} step={256} value={tileSize}
+                    onChange={e => setTileSize(+e.target.value)}
+                    className="w-full mt-1.5 accent-emerald-500" />
+                  <div className="flex justify-between text-xs text-gray-600 mt-1">
+                    {[256,512,768,1024].map(v => <span key={v}>{v}</span>)}
                   </div>
                 </div>
 
-                {/* Overlap */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Tile Overlap: {overlap} pixels
-                  </label>
-                  <input
-                    type="range"
-                    min="0"
-                    max="256"
-                    step="32"
-                    value={overlap}
-                    onChange={(e) => setOverlap(Number(e.target.value))}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-gray-500 mt-1">
-                    <span>0</span>
-                    <span>128</span>
-                    <span>256</span>
-                  </div>
+                  <label className="text-xs text-gray-400">Overlap: <span className="text-white font-mono">{overlap}</span> px</label>
+                  <input type="range" min={0} max={256} step={32} value={overlap}
+                    onChange={e => setOverlap(+e.target.value)}
+                    className="w-full mt-1.5 accent-emerald-500" />
                 </div>
 
-                {/* Normalization Method */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Normalization Method
-                  </label>
-                  <select
-                    value={normalizeMethod}
-                    onChange={(e) => setNormalizeMethod(e.target.value)}
-                    className="w-full p-2 border border-gray-300 rounded-lg"
-                  >
-                    <option value="minmax">Min-Max (0-255)</option>
+                  <label className="text-xs text-gray-400 block mb-1.5">Normalisation Method</label>
+                  <select value={normalizeMethod} onChange={e => setNormalizeMethod(e.target.value)} className="input-dark">
+                    <option value="minmax">Min-Max (0–255)</option>
                     <option value="standardize">Standardize (Z-score)</option>
                     <option value="clahe">CLAHE (Contrast Enhancement)</option>
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {normalizeMethod === 'minmax' && 'Scale values to 0-255 range'}
+                  <p className="text-xs text-gray-600 mt-1">
+                    {normalizeMethod === 'minmax' && 'Scale values to 0–255 range'}
                     {normalizeMethod === 'standardize' && 'Zero mean, unit variance'}
-                    {normalizeMethod === 'clahe' && 'Adaptive histogram equalization'}
+                    {normalizeMethod === 'clahe' && 'Adaptive histogram equalisation'}
                   </p>
                 </div>
 
-                {/* Buttons */}
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="submit"
-                    disabled={loading || !selectedImage}
-                    className="flex-1 bg-blue-600 text-white py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 transition-colors font-semibold"
-                  >
-                    {loading ? '⏳ Processing...' : '🚀 Process Image'}
+                <div className="flex gap-2 pt-1">
+                  <button type="submit" disabled={loading || !selectedImage} className="btn-primary flex-1 flex items-center justify-center gap-2">
+                    {loading
+                      ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>Processing…</>
+                      : '🚀 Process Image'}
                   </button>
-                  
-                  <button
-                    type="button"
-                    onClick={handleExtractBands}
-                    disabled={loading || !selectedImage}
-                    className="flex-1 bg-green-600 text-white py-3 px-6 rounded-lg hover:bg-green-700 disabled:bg-gray-400 transition-colors font-semibold"
-                  >
+                  <button type="button" onClick={handleExtractBands} disabled={loading || !selectedImage}
+                    className="btn-primary flex-1 flex items-center justify-center gap-1" style={{background:'linear-gradient(135deg,#059669,#10b981)'}}>
                     📊 Extract Bands
                   </button>
                 </div>
               </form>
             </div>
 
-            {/* Info Card */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">💡 What does this do?</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>✂️ <strong>Tiling:</strong> Splits large images into smaller tiles for AI processing</li>
-                <li>🎨 <strong>Normalization:</strong> Standardizes colors across different captures</li>
-                <li>📡 <strong>Band Extraction:</strong> Separates RGB and NIR spectral bands</li>
-                <li>💧 <strong>Water Index:</strong> Calculates NDWI for flood detection</li>
-              </ul>
+            {/* Info */}
+            <div className="glass rounded-2xl p-5 border border-emerald-500/10">
+              <p className="text-xs text-emerald-300 font-semibold uppercase tracking-wider mb-3">What this module does</p>
+              <div className="space-y-2 text-xs text-gray-400">
+                <p>✂️ <span className="text-gray-300 font-medium">Tiling</span> — splits large images into smaller patches for AI processing</p>
+                <p>🎨 <span className="text-gray-300 font-medium">Normalisation</span> — standardises pixel values across captures</p>
+                <p>📡 <span className="text-gray-300 font-medium">Band Extraction</span> — separates RGB and NIR spectral bands</p>
+                <p>💧 <span className="text-gray-300 font-medium">Water Index</span> — calculates NDWI for flood detection</p>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Results */}
-          <div className="space-y-6">
-            
-            {/* Error Display */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                <p className="text-red-800">❌ {error}</p>
-              </div>
-            )}
+          {/* ── RIGHT: Results ────────────────────────────────────── */}
+          <div className="lg:col-span-3 space-y-5">
 
-            {/* Processing Results */}
-            {result && (
+            {result ? (
               <>
-                {/* Metadata Card */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-semibold mb-4">✅ Processing Complete!</h2>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-gray-500">Tiles Created</p>
-                      <p className="text-2xl font-bold text-blue-600">
-                        {result.metadata.num_tiles}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Tile Size</p>
-                      <p className="text-2xl font-bold text-green-600">
-                        {result.metadata.tile_size}×{result.metadata.tile_size}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Overlap</p>
-                      <p className="text-lg font-semibold">{result.metadata.overlap}px</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Method</p>
-                      <p className="text-lg font-semibold capitalize">{result.metadata.normalize_method}</p>
-                    </div>
+                {/* Stats */}
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                  <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Processing Complete</h2>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { label: 'Tiles Created', value: result.metadata.num_tiles, color: 'text-emerald-400' },
+                      { label: 'Tile Size',     value: `${result.metadata.tile_size}×${result.metadata.tile_size}`, color: 'text-blue-400' },
+                      { label: 'Overlap',       value: `${result.metadata.overlap}px`, color: 'text-gray-300' },
+                      { label: 'Method',        value: result.metadata.normalize_method, color: 'text-purple-400' },
+                    ].map(s => (
+                      <div key={s.label} className="rounded-xl bg-white/3 border border-white/5 p-3">
+                        <p className="text-xs text-gray-500">{s.label}</p>
+                        <p className={`text-2xl font-bold capitalize ${s.color}`}>{s.value}</p>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Tile Preview Grid */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-semibold mb-4">🖼️ Tile Preview (first 9)</h2>
-                  
+                {/* Tile preview */}
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                  <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Tile Preview (first 9)</h2>
                   <div className="grid grid-cols-3 gap-2">
                     {selectedTiles.map((filename, idx) => (
-                      <div key={idx} className="relative group">
-                        <img
-                          src={`${API_URL}/api/preprocess/tile/${filename}`}
-                          alt={`Tile ${idx + 1}`}
-                          className="w-full h-auto rounded border border-gray-300 hover:border-blue-500 transition-colors"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-opacity flex items-center justify-center">
-                          <span className="text-white opacity-0 group-hover:opacity-100 text-xs font-semibold">
-                            Tile {idx + 1}
-                          </span>
+                      <div key={idx} className="relative group rounded-lg overflow-hidden border border-white/10">
+                        <img src={`${API_URL}/api/preprocess/tile/${filename}`} alt={`Tile ${idx + 1}`}
+                          className="w-full h-auto" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold opacity-0 group-hover:opacity-100">Tile {idx + 1}</span>
                         </div>
                       </div>
                     ))}
                   </div>
-
                   {result.metadata.num_tiles > 9 && (
-                    <p className="text-sm text-gray-500 mt-4 text-center">
-                      + {result.metadata.num_tiles - 9} more tiles
-                    </p>
+                    <p className="text-xs text-gray-500 mt-3 text-center">+{result.metadata.num_tiles - 9} more tiles saved to disk</p>
                   )}
                 </div>
 
-                {/* Tile Details */}
-                <div className="bg-white rounded-lg shadow-md p-6">
-                  <h2 className="text-xl font-semibold mb-4">📋 Tile Details</h2>
-                  
-                  <div className="max-h-64 overflow-y-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50 sticky top-0">
-                        <tr>
-                          <th className="px-3 py-2 text-left">Position</th>
-                          <th className="px-3 py-2 text-left">Coverage</th>
-                          <th className="px-3 py-2 text-left">Size</th>
+                {/* Tile table */}
+                <div className="glass rounded-2xl p-5 border border-white/5">
+                  <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Tile Details</h2>
+                  <div className="overflow-y-auto max-h-52 rounded-xl border border-white/5">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 bg-gray-900/80">
+                        <tr className="text-gray-500">
+                          <th className="py-2 px-3 text-left font-medium">Position</th>
+                          <th className="py-2 px-3 text-left font-medium">Coverage</th>
+                          <th className="py-2 px-3 text-left font-medium">Dimensions</th>
                         </tr>
                       </thead>
                       <tbody>
                         {result.tiles.map((tile, idx) => (
-                          <tr key={idx} className="border-t border-gray-200">
-                            <td className="px-3 py-2">
-                              Row {tile.position[0]}, Col {tile.position[1]}
-                            </td>
-                            <td className="px-3 py-2">
-                              {(tile.coverage * 100).toFixed(1)}%
-                            </td>
-                            <td className="px-3 py-2">
-                              {tile.bbox[2]}×{tile.bbox[3]}
-                            </td>
+                          <tr key={idx} className="border-t border-white/5 hover:bg-white/3">
+                            <td className="py-1.5 px-3 text-gray-300">Row {tile.position[0]}, Col {tile.position[1]}</td>
+                            <td className="py-1.5 px-3 text-emerald-400 font-medium">{(tile.coverage * 100).toFixed(1)}%</td>
+                            <td className="py-1.5 px-3 text-gray-400">{tile.bbox[2]}×{tile.bbox[3]}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -383,23 +306,16 @@ export default function PreprocessingPage() {
                   </div>
                 </div>
               </>
-            )}
-
-            {/* Welcome Message */}
-            {!result && !error && !loading && (
-              <div className="bg-gray-50 rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-                <div className="text-6xl mb-4">🔧</div>
-                <h3 className="text-xl font-semibold text-gray-700 mb-2">
-                  Ready to Process
-                </h3>
-                <p className="text-gray-500">
-                  Select an image and click "Process Image" to start
-                </p>
+            ) : (
+              <div className="glass rounded-2xl border border-dashed border-white/10 p-20 text-center">
+                <div className="text-6xl mb-4 opacity-30">🔧</div>
+                <p className="text-sm text-gray-500 mb-1">Ready to process</p>
+                <p className="text-xs text-gray-600">Select an image and click "Process Image" to start</p>
               </div>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
