@@ -124,6 +124,22 @@ export default function Home() {
               </a>
             </div>
           </div>
+
+          {/* Week 5 Card */}
+          <div className="bg-gradient-to-r from-purple-900/50 to-pink-900/50 backdrop-blur-sm rounded-2xl shadow-2xl p-6 border border-purple-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-2xl font-semibold mb-2">🧠 Deep Learning</h2>
+                <p className="text-gray-300">U-Net flood segmentation — train & run predictions</p>
+              </div>
+              <a
+                href="/model"
+                className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-pink-600 hover:to-purple-600 px-6 py-3 rounded-lg font-semibold transition-all transform hover:scale-105"
+              >
+                Launch →
+              </a>
+            </div>
+          </div>
         </div>
 
         {/* Connection Status Card */}

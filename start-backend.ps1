@@ -4,17 +4,13 @@ Write-Host "Starting Terra-Form Backend" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""
 
-Set-Location backend
+$PYTHON = "C:\Users\Shikhar Varshney\Desktop\Minor Project\.venv\Scripts\python.exe"
+$BACKEND = "C:\Users\Shikhar Varshney\Desktop\Minor Project\terra-form\backend"
 
-if (-Not (Test-Path "venv")) {
-    Write-Host "ERROR: Virtual environment not found!" -ForegroundColor Red
-    Write-Host "Please run setup-backend.ps1 first." -ForegroundColor Yellow
-    pause
+if (-Not (Test-Path $PYTHON)) {
+    Write-Host "ERROR: Virtual environment not found at .venv!" -ForegroundColor Red
     exit 1
 }
-
-Write-Host "Activating virtual environment..." -ForegroundColor Green
-& .\venv\Scripts\Activate.ps1
 
 Write-Host "Starting FastAPI server..." -ForegroundColor Green
 Write-Host ""
@@ -24,4 +20,4 @@ Write-Host ""
 Write-Host "Press Ctrl+C to stop the server" -ForegroundColor Yellow
 Write-Host ""
 
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+Start-Process powershell -ArgumentList "-NoProfile -NoExit -Command `"cd '$BACKEND'; & '$PYTHON' -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload`"" -WindowStyle Normal

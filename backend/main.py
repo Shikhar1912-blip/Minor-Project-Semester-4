@@ -23,11 +23,15 @@ from services.sentinel_service import SentinelService
 from services.image_preprocessor import ImagePreprocessor
 # Week 4: Import Flood Detector
 from services.flood_detector import FloodDetector
+# Week 5: Import Deep Learning services
+import threading
+from services import train_model as trainer
+from services.model_inference import get_inferencer, reload_inferencer
 
 app = FastAPI(
     title="Terra-Form API",
     description="AI-Driven Disaster Response Planning System",
-    version="4.0.0"  # Week 4
+    version="5.0.0"  # Week 5
 )
 
 # Configure CORS to allow frontend communication
@@ -57,6 +61,13 @@ preprocessor = ImagePreprocessor(tile_size=512)
 
 # Week 4: Initialize Flood Detector
 flood_detector = FloodDetector(ndwi_threshold=0.3)
+
+# Week 5: paths for model storage
+MODEL_DIR = Path(__file__).parent / "data" / "models"
+MODEL_DIR.mkdir(parents=True, exist_ok=True)
+SAT_DIR   = Path(__file__).parent / "data" / "satellite_images"
+PRED_DIR  = Path(__file__).parent / "data" / "predictions"
+PRED_DIR.mkdir(parents=True, exist_ok=True)
 
 
 # ===== Week 2: Request/Response Models =====
@@ -121,16 +132,22 @@ async def get_status():
         if num_flood_analyses > 0:
             flood_detection_status = "active"
     
+    # Week 5: Check for trained model
+    best_model = MODEL_DIR / "best_model.pth"
+    model_status = "trained" if best_model.exists() else "not_trained"
+    training_status = trainer.training_state.get("status", "idle")
+
     return {
         "backend": "operational",
-        "ai_model": "not_loaded",
         "satellite_api": satellite_status,
         "preprocessing": preprocessing_status,
         "flood_detection": flood_detection_status,
+        "deep_learning": model_status,
+        "training_status": training_status,
         "processed_tiles": num_processed_tiles,
         "flood_analyses": num_flood_analyses,
-        "version": "4.0.0",
-        "week": 4
+        "version": "5.0.0",
+        "week": 5
     }
 
 
@@ -640,4 +657,135 @@ async def list_flood_results():
         "status": "success",
         "results": sorted(results, key=lambda x: x['modified'], reverse=True),
         "count": len(results)
+    }
+
+
+# ============================================================
+#  Week 5 — Deep Learning Endpoints
+# ============================================================
+
+class TrainRequest(BaseModel):
+    epochs:         int   = 20
+    batch_size:     int   = 4
+    learning_rate:  float = 1e-4
+    ndwi_threshold: float = 0.3
+    val_split:      float = 0.2
+
+
+class PredictRequest(BaseModel):
+    image_filename: str
+    threshold:      float = 0.5
+    save_results:   bool  = True
+
+
+@app.post("/api/model/train")
+async def start_training(request: TrainRequest):
+    """
+    Start U-Net training in a background thread.
+    Returns immediately; poll /api/model/status for progress.
+    """
+    if trainer.training_state["is_training"]:
+        raise HTTPException(status_code=409, detail="Training already in progress")
+
+    sat_dir = SAT_DIR
+    if not sat_dir.exists() or not list(sat_dir.glob("*.png")):
+        raise HTTPException(
+            status_code=404,
+            detail="No satellite images found. Download images from the Satellite page first."
+        )
+
+    def run():
+        trainer.train(
+            data_dir        = sat_dir,
+            model_dir       = MODEL_DIR,
+            epochs          = request.epochs,
+            batch_size      = request.batch_size,
+            learning_rate   = request.learning_rate,
+            ndwi_threshold  = request.ndwi_threshold,
+            val_split       = request.val_split,
+        )
+        # Reload inferencer with newly saved weights
+        reload_inferencer(MODEL_DIR)
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+
+    return {
+        "status":  "started",
+        "message": "Training started in background. Poll /api/model/status for updates.",
+        "config":  request.model_dump(),
+    }
+
+
+@app.get("/api/model/status")
+async def get_training_status():
+    """Return current training progress and metrics."""
+    state = trainer.training_state.copy()
+    # Add model-file info
+    best  = MODEL_DIR / "best_model.pth"
+    final = MODEL_DIR / "final_model.pth"
+    state["model_saved"]   = best.exists()
+    state["best_model_kb"] = round(best.stat().st_size / 1024, 1) if best.exists() else 0
+    return state
+
+
+@app.post("/api/model/predict")
+async def predict_flood(request: PredictRequest):
+    """Run the trained U-Net on a satellite image and return flood statistics."""
+    inferencer = get_inferencer(MODEL_DIR)
+
+    if not inferencer.is_ready():
+        raise HTTPException(
+            status_code=404,
+            detail="No trained model found. Train a model first via /api/model/train."
+        )
+
+    rgb_path = SAT_DIR / request.image_filename
+    nir_name = request.image_filename.replace(".png", "_NIR.tiff")
+    nir_path = SAT_DIR / nir_name
+
+    if not rgb_path.exists():
+        raise HTTPException(status_code=404, detail=f"Image not found: {request.image_filename}")
+    if not nir_path.exists():
+        raise HTTPException(status_code=404, detail=f"NIR band not found: {nir_name}")
+
+    try:
+        prefix = request.image_filename.replace(".png", "")
+        result = inferencer.predict(
+            rgb_path    = str(rgb_path),
+            nir_path    = str(nir_path),
+            threshold   = request.threshold,
+            output_dir  = PRED_DIR if request.save_results else None,
+            output_prefix = prefix,
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/model/predictions/{filename}")
+async def get_prediction_image(filename: str):
+    """Serve a saved prediction visualisation image."""
+    path = PRED_DIR / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Prediction file not found")
+    return FileResponse(str(path), media_type="image/png")
+
+
+@app.get("/api/model/info")
+async def get_model_info():
+    """Return metadata of the current best model checkpoint."""
+    best = MODEL_DIR / "best_model.pth"
+    if not best.exists():
+        return {"status": "no_model", "message": "No trained model yet"}
+
+    import torch
+    ckpt = torch.load(str(best), map_location="cpu", weights_only=False)
+    return {
+        "status":          "ready",
+        "epoch":           ckpt.get("epoch"),
+        "val_iou":         round(ckpt.get("val_iou", 0), 4),
+        "val_f1":          round(ckpt.get("val_f1",  0), 4),
+        "ndwi_threshold":  ckpt.get("ndwi_threshold", 0.3),
+        "model_size_kb":   round(best.stat().st_size / 1024, 1),
     }

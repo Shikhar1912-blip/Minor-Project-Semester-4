@@ -15,3 +15,7 @@ python-multipart>=0.0.9
 opencv-python>=4.8.0
 scikit-image>=0.22.0
 scipy>=1.11.0
+
+# Week 5: Deep Learning
+torch>=2.0.0
+torchvision>=0.15.0
