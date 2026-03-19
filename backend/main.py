@@ -37,7 +37,11 @@ app = FastAPI(
 # Configure CORS to allow frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js default port
+    allow_origins=[
+        "http://localhost:3000", 
+        "http://localhost:3001", 
+        "http://localhost:3002"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -61,6 +65,10 @@ preprocessor = ImagePreprocessor(tile_size=512)
 
 # Week 4: Initialize Flood Detector
 flood_detector = FloodDetector(ndwi_threshold=0.3)
+
+# Weeks 6-8: Initialize Alert Service
+from services.alert_service import AlertService
+alert_service = AlertService()
 
 # Week 5: paths for model storage
 MODEL_DIR = Path(__file__).parent / "data" / "models"
@@ -762,7 +770,6 @@ async def predict_flood(request: PredictRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
 @app.get("/api/model/predictions/{filename}")
 async def get_prediction_image(filename: str):
     """Serve a saved prediction visualisation image."""
@@ -770,7 +777,6 @@ async def get_prediction_image(filename: str):
     if not path.exists():
         raise HTTPException(status_code=404, detail="Prediction file not found")
     return FileResponse(str(path), media_type="image/png")
-
 
 @app.get("/api/model/info")
 async def get_model_info():
@@ -789,3 +795,56 @@ async def get_model_info():
         "ndwi_threshold":  ckpt.get("ndwi_threshold", 0.3),
         "model_size_kb":   round(best.stat().st_size / 1024, 1),
     }
+
+# ============================================================
+#  Weeks 6-8 — Alert System & Risk Mapping Endpoints
+# ============================================================
+
+class ClassifyRequest(BaseModel):
+    water_percentage: float
+
+@app.post("/api/alerts/classify")
+async def classify_risk(request: ClassifyRequest):
+    """
+    Classify a water coverage percentage into a risk level.
+
+    Returns Low / Moderate / High / Critical with color, description,
+    and recommended action.
+    """
+    risk = alert_service.classify_risk(request.water_percentage)
+    return {"status": "success", "risk": risk}
+
+
+
+@app.get("/api/alerts/list")
+async def list_alerts(limit: int = 50, min_level: int = 0):
+    """
+    Get stored alerts.
+
+    Query params:
+        limit     — max number of results (default 50)
+        min_level — 0=all, 1=Moderate+, 2=High+, 3=Critical only
+    """
+    alerts = alert_service.get_alerts(limit=limit, min_level=min_level)
+    return {
+        "status": "success",
+        "count": len(alerts),
+        "alerts": alerts,
+    }
+
+
+@app.get("/api/alerts/summary")
+async def get_alerts_summary():
+    """
+    Return aggregate statistics: counts by risk level, most recent alert,
+    last critical event, and risk tier definitions.
+    """
+    summary = alert_service.get_risk_summary()
+    return {"status": "success", **summary}
+
+
+@app.delete("/api/alerts/clear")
+async def clear_alerts():
+    """Delete all stored alerts (dev / reset use)."""
+    result = alert_service.clear_alerts()
+    return {"status": "success", "message": f"Cleared {result['deleted']} alerts."}

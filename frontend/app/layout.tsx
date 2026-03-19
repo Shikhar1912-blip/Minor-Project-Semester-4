@@ -30,6 +30,7 @@ export default function RootLayout({
               <a href="/preprocess" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Preprocess</a>
               <a href="/flood" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Flood</a>
               <a href="/model" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">AI Model</a>
+              <a href="/alerts" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Alerts</a>
             </div>
           </div>
         </nav>

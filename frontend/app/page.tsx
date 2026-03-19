@@ -68,6 +68,19 @@ const modules = [
     glow: 'hover:glow-purple',
     tag: 'Week 5',
   },
+  {
+    week: 6,
+    icon: '⚠️',
+    title: 'Alert System',
+    description: 'Automated risk classification and emergency alert dashboard',
+    href: '/alerts',
+    color: 'from-orange-600/20 to-red-900/10',
+    border: 'border-orange-500/20',
+    badge: 'badge-orange',
+    btnColor: 'from-orange-600 to-red-700',
+    glow: 'hover:glow-orange',
+    tag: 'Weeks 6-8',
+  },
 ]
 
 const weeks = [
@@ -76,7 +89,7 @@ const weeks = [
   { n: 3, label: 'Image Preprocessing Pipeline', done: true },
   { n: 4, label: 'NDWI Flood Detection', done: true },
   { n: 5, label: 'U-Net Deep Learning Model', done: true },
-  { n: '6–8', label: 'Alert System & Risk Mapping', done: false },
+  { n: '6–8', label: 'Alert System & Risk Mapping', done: true },
   { n: '9–12', label: 'Multi-Hazard Detection', done: false },
   { n: '13–16', label: 'Deployment & Optimisation', done: false },
 ]
@@ -119,7 +132,7 @@ export default function Home() {
         <div className="text-center mb-20">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium badge-blue mb-6">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-            Version {status?.version ?? '5.0.0'} · Week {status?.week ?? 5} of 16
+            Version {status?.version ?? '6.0.0'} · Week {status?.week ?? 8} of 16
           </div>
           <h1 className="text-6xl sm:text-7xl font-extrabold mb-5 tracking-tight gradient-text leading-tight">
             Terra-Form
@@ -142,7 +155,7 @@ export default function Home() {
               </div>
               <div className="w-px h-10 bg-white/10"></div>
               <div className="text-center">
-                <p className="text-3xl font-bold text-emerald-400">5</p>
+                <p className="text-3xl font-bold text-emerald-400">6</p>
                 <p className="text-xs text-gray-500 mt-1">Modules Active</p>
               </div>
               <div className="w-px h-10 bg-white/10"></div>
@@ -252,10 +265,10 @@ export default function Home() {
             <div className="mt-5 pt-4 border-t border-white/5">
               <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
                 <span>Overall Progress</span>
-                <span className="text-emerald-400 font-medium">5 / 16 weeks</span>
+                <span className="text-emerald-400 font-medium">8 / 16 weeks</span>
               </div>
               <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 rounded-full" style={{ width: '31%' }}></div>
+                <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 rounded-full" style={{ width: '50%' }}></div>
               </div>
             </div>
           </div>

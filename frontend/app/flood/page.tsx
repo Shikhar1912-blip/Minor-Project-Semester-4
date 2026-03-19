@@ -73,13 +73,13 @@ export default function FloodDetectionPage() {
   const fetchAvailableImages = async () => {
     try {
       const response = await axios.get(`${API_URL}/api/preprocess/list-images`)
-      setImages(response.data.images)
-      if (response.data.images.length > 0) {
-        setSelectedImage(response.data.images[0].filename)
-        setBeforeImage(response.data.images[0].filename)
-        if (response.data.images.length > 1) {
-          setAfterImage(response.data.images[1].filename)
-        }
+      const imgs = response.data.images
+      setImages(imgs)
+      if (imgs.length > 0) {
+        setSelectedImage(imgs[0].filename)
+        setBeforeImage(imgs[0].filename)
+        // Default afterImage to second image if available, otherwise same as before
+        setAfterImage(imgs.length > 1 ? imgs[1].filename : imgs[0].filename)
       }
     } catch (err) {
       console.error('Failed to fetch images:', err)
@@ -212,6 +212,14 @@ export default function FloodDetectionPage() {
               <>
                 <div className="glass rounded-2xl p-5 border border-white/5">
                   <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Select Images</h2>
+
+                  {images.length < 2 && (
+                    <div className="mb-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20 p-3">
+                      <p className="text-xs text-yellow-300 font-semibold mb-1">⚠️ Only 1 image available</p>
+                      <p className="text-xs text-gray-400">For a meaningful comparison you need 2 images of the same location from different dates. Go to the <a href="/satellite" className="text-blue-400 underline underline-offset-2">Satellite page</a> and download a second image (e.g. same city, different date).</p>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1.5">Before Flood</label>
