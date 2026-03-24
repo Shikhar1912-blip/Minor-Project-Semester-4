@@ -31,6 +31,8 @@ export default function RootLayout({
               <a href="/flood" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Flood</a>
               <a href="/model" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">AI Model</a>
               <a href="/alerts" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Alerts</a>
+              <a href="/map" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Map</a>
+              <a href="/hazards" className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-white/5 rounded-lg transition-all">Hazards</a>
             </div>
           </div>
         </nav>

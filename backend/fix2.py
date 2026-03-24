@@ -54,7 +54,7 @@ async def classify_risk(request: ClassifyRequest):
 # Since the slice is [start:end], it's lines[764:772] in 0-indexed terms 
 # line 764 is index 763. line 772 is index 771. 
 # Let's replace 764 to 772 (so indices 763:772)
-lines[763:772] = [new_content + "\n"]
+# lines[763:772] = [new_content + "\n"]
 
 with open(filepath, "w", encoding="utf-8") as f:
     f.writelines(lines)

@@ -47,10 +47,9 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Quick classify state
-  const [testPct, setTestPct] = useState<string>('')
-  const [testResult, setTestResult] = useState<any>(null)
-  const [isClassifying, setIsClassifying] = useState(false)
+  // Bulk classify state
+  const [isClassifyingAll, setIsClassifyingAll] = useState(false)
+  const [bulkMode, setBulkMode] = useState<'ndwi' | 'unet'>('ndwi')
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
@@ -76,25 +75,23 @@ export default function AlertsPage() {
     fetchData()
   }, [])
 
-  const handleQuickClassify = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!testPct) return
-
-    setIsClassifying(true)
+  const handleClassifyAll = async () => {
+    setIsClassifyingAll(true)
     try {
-      const res = await axios.post(`${API_URL}/api/alerts/classify`, {
-        water_percentage: parseFloat(testPct)
+      await axios.post(`${API_URL}/api/alerts/classify-all`, {
+        mode: bulkMode,
+        persist: true
       })
-      setTestResult(res.data.risk)
+      fetchData()
     } catch (err) {
       console.error(err)
     } finally {
-      setIsClassifying(false)
+      setIsClassifyingAll(false)
     }
   }
 
   const clearAlerts = async () => {
-    if (!window.confirm('Are you sure you want to clear all alert history?')) return
+    if (!window.confirm('Clear alert history ONLY if evacuation has completed. Proceed?')) return
     try {
       await axios.delete(`${API_URL}/api/alerts/clear`)
       fetchData()
@@ -171,51 +168,41 @@ export default function AlertsPage() {
           
           {/* Left Column */}
           <div className="space-y-6">
-            
-            {/* Quick Classify Widget */}
-            <div className="glass rounded-2xl p-5 border border-white/5">
-              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Quick Classify</h2>
-              <p className="text-xs text-gray-500 mb-4 flex-1">
-                Enter a hypothetical water coverage percentage to test the risk engine.
-              </p>
-              
-              <form onSubmit={handleQuickClassify} className="flex gap-2 mb-4">
-                <input
-                  type="number"
-                  step="0.1"
-                  min="0"
-                  max="100"
-                  value={testPct}
-                  onChange={(e) => setTestPct(e.target.value)}
-                  placeholder="e.g. 18.5"
-                  className="input-dark flex-1"
-                  required
-                />
-                <button 
-                  type="submit" 
-                  disabled={isClassifying}
-                  className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-medium transition-colors disabled:opacity-50"
-                >
-                  {isClassifying ? '...' : 'Test'}
-                </button>
-              </form>
 
-              {testResult && (
-                <div className="p-4 rounded-xl bg-black/40 border border-white/5 space-y-3 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">Result for {testResult.water_percentage}%</span>
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${getBadgeClass(testResult.color)}`}>
-                      {testResult.label}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-300 leading-relaxed">
-                    {testResult.description}
-                  </p>
-                  <p className="text-xs text-emerald-400 mt-2">
-                    Action: {testResult.recommended_action}
-                  </p>
+            {/* Bulk Classify Widget */}
+            <div className="glass rounded-2xl p-5 border border-white/5">
+              <h2 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-4">Classify Stored Images</h2>
+              <p className="text-xs text-gray-500 mb-4 flex-1">
+                Scan all stored satellite images and classify them (Moderate+ alerts will be logged automatically).
+              </p>
+
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center mb-4">
+                <label className="text-xs text-gray-400">Mode</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setBulkMode('ndwi')}
+                    className={`px-3 py-2 rounded-lg text-xs border ${bulkMode === 'ndwi' ? 'border-blue-500 text-blue-300 bg-blue-500/10' : 'border-white/10 text-gray-300 bg-white/5'}`}
+                  >
+                    NDWI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkMode('unet')}
+                    className={`px-3 py-2 rounded-lg text-xs border ${bulkMode === 'unet' ? 'border-blue-500 text-blue-300 bg-blue-500/10' : 'border-white/10 text-gray-300 bg-white/5'}`}
+                  >
+                    U-Net
+                  </button>
                 </div>
-              )}
+              </div>
+
+              <button
+                onClick={handleClassifyAll}
+                disabled={isClassifyingAll}
+                className="w-full px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {isClassifyingAll ? 'Classifying...' : 'Run Classification'}
+              </button>
             </div>
 
             {/* Threshold Legend */}

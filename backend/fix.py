@@ -55,8 +55,8 @@ async def classify_risk(request: ClassifyRequest):
     risk = alert_service.classify_risk(request.water_percentage)
     return {"status": "success", "risk": risk}"""
 
-        new_content = content[:bad_start] + replacement + content[bad_end:]
-        open("main.py", "w", encoding="utf-8").write(new_content)
+        # new_content = content[:bad_start] + replacement + content[bad_end:]
+        # open("main.py", "w", encoding="utf-8").write(new_content)
         print("Successfully patched main.py")
     else:
         print("Could not find end of bad block")

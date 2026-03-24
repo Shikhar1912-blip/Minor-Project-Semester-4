@@ -31,7 +31,7 @@ from services.model_inference import get_inferencer, reload_inferencer
 app = FastAPI(
     title="Terra-Form API",
     description="AI-Driven Disaster Response Planning System",
-    version="5.0.0"  # Week 5
+    version="9.0.0"  # Week 9
 )
 
 # Configure CORS to allow frontend communication
@@ -69,6 +69,17 @@ flood_detector = FloodDetector(ndwi_threshold=0.3)
 # Weeks 6-8: Initialize Alert Service
 from services.alert_service import AlertService
 alert_service = AlertService()
+
+# Week 9: Initialize Geospatial Service
+from services.geospatial_service import GeospatialService
+geo_service = GeospatialService()
+
+# Week 10: Initialize Hazard Service
+from services.hazard_service import HazardService
+hazard_service = HazardService()
+
+# Simple state to avoid concurrent bulk classifications
+classify_all_state = {"is_running": False}
 
 # Week 5: paths for model storage
 MODEL_DIR = Path(__file__).parent / "data" / "models"
@@ -514,6 +525,20 @@ async def detect_flood(request: FloodDetectionRequest):
             output_prefix=request.image_filename.replace(".png", ""),
             save_results=request.save_results
         )
+
+        # Auto-create alert (Moderate+ only) based on NDWI stats
+        try:
+            stats = results.get("statistics", {})
+            if stats:
+                alert_service.create_alert(
+                    image_filename=request.image_filename,
+                    water_percentage=stats.get("water_percentage", 0),
+                    analysis_type="ndwi",
+                    location=None,
+                    water_area_km2=stats.get("water_area_km2"),
+                )
+        except Exception as alert_err:
+            logger.warning(f"Alert creation skipped: {alert_err}")
         
         # Prepare response
         response = {
@@ -766,6 +791,21 @@ async def predict_flood(request: PredictRequest):
             output_dir  = PRED_DIR if request.save_results else None,
             output_prefix = prefix,
         )
+
+        # Auto-create alert (Moderate+ only) based on U-Net stats
+        try:
+            stats = result.get("statistics", {})
+            if stats:
+                alert_service.create_alert(
+                    image_filename=request.image_filename,
+                    water_percentage=stats.get("water_percentage", 0),
+                    analysis_type="unet",
+                    location=None,
+                    water_area_km2=stats.get("water_area_km2"),
+                )
+        except Exception as alert_err:
+            logger.warning(f"Alert creation skipped: {alert_err}")
+
         return {"status": "success", **result}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -802,17 +842,232 @@ async def get_model_info():
 
 class ClassifyRequest(BaseModel):
     water_percentage: float
+    image_filename: str | None = None
+    location: str | None = None
+    analysis_type: str | None = "manual"  # ndwi | unet | manual
+    water_area_km2: float | None = None
+    persist: bool = False
+
+
+class ClassifyImageRequest(BaseModel):
+    image_filename: str
+    mode: str = "ndwi"  # ndwi | unet
+    ndwi_threshold: float | None = None
+    unet_threshold: float | None = 0.5
+    persist: bool = True
+    location: str | None = None
+    water_area_km2: float | None = None
+
+
+class ClassifyAllRequest(BaseModel):
+    mode: str = "ndwi"          # ndwi | unet
+    ndwi_threshold: float | None = None
+    unet_threshold: float | None = 0.5
+    persist: bool = True
+
 
 @app.post("/api/alerts/classify")
 async def classify_risk(request: ClassifyRequest):
-    """
-    Classify a water coverage percentage into a risk level.
+    """Classify a water coverage percentage into a risk level.
 
-    Returns Low / Moderate / High / Critical with color, description,
-    and recommended action.
+    By default this acts as a pure "what-if" calculator.
+    If `persist=true` and a risk level of Moderate or above is detected,
+    the alert is stored via AlertService.create_alert so it appears in the
+    live alert log.
     """
+    # Always compute risk tier for UI display
     risk = alert_service.classify_risk(request.water_percentage)
-    return {"status": "success", "risk": risk}
+
+    created_alert = None
+    if request.persist:
+        created_alert = alert_service.create_alert(
+            image_filename=request.image_filename or "manual_input",
+            water_percentage=request.water_percentage,
+            analysis_type=(request.analysis_type or "manual"),
+            location=request.location,
+            water_area_km2=request.water_area_km2,
+        )
+
+    return {
+        "status": "success",
+        "risk": risk,
+        "alert": created_alert,
+    }
+
+
+@app.post("/api/alerts/classify-image")
+async def classify_image_risk(request: ClassifyImageRequest):
+    """Classify flood risk for an existing image using NDWI or U-Net.
+
+    - mode="ndwi": runs the NDWI detector on the image (requires NIR)
+    - mode="unet": runs the trained U-Net (requires trained model)
+    - persist=True (default): stores Moderate+ alerts in the log
+    """
+
+    img_name = request.image_filename
+    mode = request.mode.lower()
+
+    # Resolve paths
+    rgb_path = SAT_DIR / img_name
+    nir_path = SAT_DIR / img_name.replace(".png", "_NIR.tiff")
+
+    if not rgb_path.exists():
+        raise HTTPException(status_code=404, detail=f"Image not found: {img_name}")
+    if mode == "ndwi" and not nir_path.exists():
+        raise HTTPException(status_code=404, detail=f"NIR band not found for {img_name}")
+
+    stats = None
+    analysis_type = mode
+
+    try:
+        if mode == "ndwi":
+            # Use flood detector (NDWI)
+            flood_detector.ndwi_threshold = request.ndwi_threshold or flood_detector.ndwi_threshold
+            res = flood_detector.analyze_image(
+                str(rgb_path),
+                str(nir_path),
+                output_prefix=img_name.replace(".png", ""),
+                save_results=False,
+            )
+            stats = res.get("statistics", {})
+
+        elif mode == "unet":
+            inferencer = get_inferencer(MODEL_DIR)
+            if not inferencer.is_ready():
+                raise HTTPException(status_code=404, detail="No trained U-Net model found. Train it first.")
+            res = inferencer.predict(
+                rgb_path=str(rgb_path),
+                nir_path=str(nir_path),
+                threshold=request.unet_threshold or 0.5,
+                output_dir=None,
+                output_prefix=img_name.replace(".png", ""),
+            )
+            stats = res.get("statistics", {})
+        else:
+            raise HTTPException(status_code=400, detail="mode must be 'ndwi' or 'unet'")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+    if not stats:
+        raise HTTPException(status_code=500, detail="No statistics returned from analysis")
+
+    # Risk classification
+    water_pct = stats.get("water_percentage", 0)
+    risk = alert_service.classify_risk(water_pct)
+
+    created_alert = None
+    if request.persist:
+        try:
+            created_alert = alert_service.create_alert(
+                image_filename=img_name,
+                water_percentage=water_pct,
+                analysis_type=analysis_type,
+                location=request.location,
+                water_area_km2=stats.get("water_area_km2"),
+            )
+        except Exception as alert_err:
+            logger.warning(f"Alert creation skipped: {alert_err}")
+
+    return {
+        "status": "success",
+        "mode": mode,
+        "risk": risk,
+        "statistics": stats,
+        "alert": created_alert,
+    }
+
+
+@app.post("/api/alerts/classify-all")
+async def classify_all_images(request: ClassifyAllRequest):
+    """Classify all stored satellite images using NDWI or U-Net and log alerts.
+
+    Now runs in a background thread so the API returns immediately. Prevents
+    concurrent runs via a simple state flag.
+    """
+
+    if classify_all_state.get("is_running"):
+        raise HTTPException(status_code=409, detail="Bulk classification already running")
+
+    mode = request.mode.lower()
+
+    def run_bulk():
+        classify_all_state["is_running"] = True
+        processed = []
+        failures = []
+
+        try:
+            pngs = [p for p in SAT_DIR.glob("*.png") if not p.name.endswith("_NIR.png")]
+
+            inferencer = None
+            if mode == "unet":
+                inferencer = get_inferencer(MODEL_DIR)
+                if not inferencer.is_ready():
+                    raise RuntimeError("No trained U-Net model found. Train it first.")
+
+            for png in pngs:
+                img_name = png.name
+                nir_path = SAT_DIR / img_name.replace(".png", "_NIR.tiff")
+                try:
+                    stats = None
+                    if mode == "ndwi":
+                        if not nir_path.exists():
+                            raise FileNotFoundError(f"NIR band missing for {img_name}")
+                        flood_detector.ndwi_threshold = request.ndwi_threshold or flood_detector.ndwi_threshold
+                        res = flood_detector.analyze_image(
+                            str(png), str(nir_path), output_prefix=img_name.replace(".png", ""), save_results=False
+                        )
+                        stats = res.get("statistics", {})
+                    elif mode == "unet":
+                        res = inferencer.predict(
+                            rgb_path=str(png),
+                            nir_path=str(nir_path),
+                            threshold=request.unet_threshold or 0.5,
+                            output_dir=None,
+                            output_prefix=img_name.replace(".png", ""),
+                        )
+                        stats = res.get("statistics", {})
+                    else:
+                        raise RuntimeError("mode must be 'ndwi' or 'unet'")
+
+                    if not stats:
+                        raise RuntimeError("No statistics returned from analysis")
+
+                    risk = alert_service.classify_risk(stats.get("water_percentage", 0))
+                    created_alert = None
+                    if request.persist:
+                        created_alert = alert_service.create_alert(
+                            image_filename=img_name,
+                            water_percentage=stats.get("water_percentage", 0),
+                            analysis_type=mode,
+                            location=None,
+                            water_area_km2=stats.get("water_area_km2"),
+                        )
+
+                    processed.append({
+                        "image": img_name,
+                        "risk": risk,
+                        "statistics": stats,
+                        "alert": created_alert,
+                    })
+                except Exception as e:
+                    failures.append({"image": img_name, "error": str(e)})
+
+            logger.info(f"Bulk classify finished | mode={mode} | processed={len(processed)} | failed={len(failures)}")
+        except Exception as e:
+            logger.warning(f"Bulk classify failed early: {e}")
+        finally:
+            classify_all_state["is_running"] = False
+
+    thread = threading.Thread(target=run_bulk, daemon=True)
+    thread.start()
+
+    return {
+        "status": "started",
+        "mode": mode,
+        "message": "Bulk classification started. Refresh alerts after it completes.",
+    }
 
 
 
@@ -848,3 +1103,109 @@ async def clear_alerts():
     """Delete all stored alerts (dev / reset use)."""
     result = alert_service.clear_alerts()
     return {"status": "success", "message": f"Cleared {result['deleted']} alerts."}
+
+
+# ============================================================
+#  Week 9 — 3D Map & Geospatial Endpoints
+# ============================================================
+
+class GeoJsonRequest(BaseModel):
+    mask_filename: str
+    min_lon: float
+    min_lat: float
+    max_lon: float
+    max_lat: float
+    risk_label: Optional[str] = "Moderate"
+    risk_color: Optional[str] = "#eab308"
+
+
+@app.post("/api/map/geojson")
+async def generate_geojson(request: GeoJsonRequest):
+    """
+    Convert a flood detection mask into a GeoJSON FeatureCollection.
+
+    Requires the mask filename and the geographic bounding box
+    (min_lon, min_lat, max_lon, max_lat) of the original satellite image.
+    """
+    try:
+        bbox = (request.min_lon, request.min_lat, request.max_lon, request.max_lat)
+        geojson = geo_service.generate_and_save(
+            mask_filename=request.mask_filename,
+            bbox=bbox,
+            risk_label=request.risk_label,
+            risk_color=request.risk_color,
+        )
+        return {"status": "success", **geojson}
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/map/layers")
+async def get_map_layers():
+    """List all available mask files that can be overlaid on the 3D map."""
+    layers = geo_service.get_available_layers()
+    return {
+        "status": "success",
+        "count": len(layers),
+        "layers": layers,
+    }
+
+
+@app.get("/api/map/geojson/{filename}")
+async def get_saved_geojson(filename: str):
+    """Serve a previously generated GeoJSON file."""
+    path = geo_service.geojson_dir / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail=f"GeoJSON file not found: {filename}")
+    import json
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {"status": "success", **data}
+
+
+# ============================================================
+#  Week 10 — Multi-Hazard Risk Scoring Endpoints
+# ============================================================
+
+class HazardScoreRequest(BaseModel):
+    water_percentage: float
+    mask_filename: Optional[str] = None
+    location: Optional[str] = None
+
+
+@app.post("/api/hazards/score")
+async def calculate_hazard_score(request: HazardScoreRequest):
+    """
+    Calculate a composite multi-hazard risk score (0-100).
+
+    Combines flood risk, elevation risk, proximity to water,
+    and population density into a single weighted score.
+    """
+    try:
+        result = hazard_service.calculate_score(
+            water_percentage=request.water_percentage,
+            mask_filename=request.mask_filename,
+            location=request.location,
+        )
+        return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/hazards/history")
+async def get_hazard_history(limit: int = 50):
+    """Get recent hazard scoring history."""
+    history = hazard_service.get_history(limit=limit)
+    return {
+        "status": "success",
+        "count": len(history),
+        "history": history,
+    }
+
+
+@app.delete("/api/hazards/clear")
+async def clear_hazard_history():
+    """Clear all hazard scoring history."""
+    result = hazard_service.clear_history()
+    return {"status": "success", "message": f"Cleared {result['deleted']} records."}
