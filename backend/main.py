@@ -74,9 +74,6 @@ alert_service = AlertService()
 from services.geospatial_service import GeospatialService
 geo_service = GeospatialService()
 
-# Week 10: Initialize Hazard Service
-from services.hazard_service import HazardService
-hazard_service = HazardService()
 
 # Simple state to avoid concurrent bulk classifications
 classify_all_state = {"is_running": False}
@@ -1106,7 +1103,7 @@ async def clear_alerts():
 
 
 # ============================================================
-#  Week 9 — 3D Map & Geospatial Endpoints
+#  Week 9 — 3D Map & Geospatial Endpoints (SMART AUTO-OVERLAY)
 # ============================================================
 
 class GeoJsonRequest(BaseModel):
@@ -1115,25 +1112,15 @@ class GeoJsonRequest(BaseModel):
     min_lat: float
     max_lon: float
     max_lat: float
-    risk_label: Optional[str] = "Moderate"
-    risk_color: Optional[str] = "#eab308"
 
 
 @app.post("/api/map/geojson")
 async def generate_geojson(request: GeoJsonRequest):
-    """
-    Convert a flood detection mask into a GeoJSON FeatureCollection.
-
-    Requires the mask filename and the geographic bounding box
-    (min_lon, min_lat, max_lon, max_lat) of the original satellite image.
-    """
+    """Manual fallback: generate GeoJSON with explicit bbox."""
     try:
         bbox = (request.min_lon, request.min_lat, request.max_lon, request.max_lat)
         geojson = geo_service.generate_and_save(
-            mask_filename=request.mask_filename,
-            bbox=bbox,
-            risk_label=request.risk_label,
-            risk_color=request.risk_color,
+            mask_filename=request.mask_filename, bbox=bbox,
         )
         return {"status": "success", **geojson}
     except FileNotFoundError as e:
@@ -1142,15 +1129,43 @@ async def generate_geojson(request: GeoJsonRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@app.get("/api/map/auto-overlay/{mask_filename}")
+async def auto_generate_overlay(mask_filename: str):
+    """
+    SMART: Auto-detect bbox from a mask filename and generate GeoJSON.
+    No manual coordinate input needed — the AI extracts everything.
+    """
+    try:
+        geojson = geo_service.auto_generate_overlay(mask_filename)
+        return {"status": "success", **geojson}
+    except (FileNotFoundError, ValueError) as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/map/auto-overlay-all")
+async def auto_generate_all_overlays():
+    """
+    BATCH: Scan all mask files, auto-detect coordinates, generate
+    GeoJSON for every result. Frontend calls this once on page load.
+    """
+    try:
+        results = geo_service.auto_generate_all()
+        return {
+            "status": "success",
+            "count": len(results),
+            "overlays": results,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/map/layers")
 async def get_map_layers():
-    """List all available mask files that can be overlaid on the 3D map."""
+    """List all available mask files with auto-detected bounding boxes."""
     layers = geo_service.get_available_layers()
-    return {
-        "status": "success",
-        "count": len(layers),
-        "layers": layers,
-    }
+    return {"status": "success", "count": len(layers), "layers": layers}
 
 
 @app.get("/api/map/geojson/{filename}")
@@ -1158,54 +1173,9 @@ async def get_saved_geojson(filename: str):
     """Serve a previously generated GeoJSON file."""
     path = geo_service.geojson_dir / filename
     if not path.exists():
-        raise HTTPException(status_code=404, detail=f"GeoJSON file not found: {filename}")
+        raise HTTPException(status_code=404, detail=f"GeoJSON not found: {filename}")
     import json
     data = json.loads(path.read_text(encoding="utf-8"))
     return {"status": "success", **data}
 
 
-# ============================================================
-#  Week 10 — Multi-Hazard Risk Scoring Endpoints
-# ============================================================
-
-class HazardScoreRequest(BaseModel):
-    water_percentage: float
-    mask_filename: Optional[str] = None
-    location: Optional[str] = None
-
-
-@app.post("/api/hazards/score")
-async def calculate_hazard_score(request: HazardScoreRequest):
-    """
-    Calculate a composite multi-hazard risk score (0-100).
-
-    Combines flood risk, elevation risk, proximity to water,
-    and population density into a single weighted score.
-    """
-    try:
-        result = hazard_service.calculate_score(
-            water_percentage=request.water_percentage,
-            mask_filename=request.mask_filename,
-            location=request.location,
-        )
-        return {"status": "success", **result}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/api/hazards/history")
-async def get_hazard_history(limit: int = 50):
-    """Get recent hazard scoring history."""
-    history = hazard_service.get_history(limit=limit)
-    return {
-        "status": "success",
-        "count": len(history),
-        "history": history,
-    }
-
-
-@app.delete("/api/hazards/clear")
-async def clear_hazard_history():
-    """Clear all hazard scoring history."""
-    result = hazard_service.clear_history()
-    return {"status": "success", "message": f"Cleared {result['deleted']} records."}

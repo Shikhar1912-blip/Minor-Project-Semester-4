@@ -1,5 +1,20 @@
 [
   {
+    "id": "20260324163601986292",
+    "timestamp": "2026-03-24T16:36:01.986365",
+    "image_filename": "chennai.png",
+    "location": "Unknown",
+    "analysis_type": "NDWI",
+    "water_percentage": 27.17,
+    "water_area_km2": 32.5756,
+    "risk_level": 2,
+    "risk_label": "High",
+    "risk_color": "orange",
+    "risk_hex": "#f97316",
+    "description": "Significant flooding detected. Population may be at risk.",
+    "recommended_action": "Activate emergency protocols. Begin evacuation planning."
+  },
+  {
     "id": "20260319095156296784",
     "timestamp": "2026-03-19T09:51:56.296844",
     "image_filename": "chennai.png",

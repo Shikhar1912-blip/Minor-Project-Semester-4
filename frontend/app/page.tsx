@@ -94,19 +94,6 @@ const modules = [
     glow: 'hover:glow-green',
     tag: 'Week 9',
   },
-  {
-    week: 10,
-    icon: '🔥',
-    title: 'Multi-Hazard Engine',
-    description: 'Composite risk scoring across flood, elevation, proximity & population',
-    href: '/hazards',
-    color: 'from-red-600/20 to-rose-900/10',
-    border: 'border-red-500/20',
-    badge: 'badge-red',
-    btnColor: 'from-red-600 to-rose-700',
-    glow: 'hover:glow-red',
-    tag: 'Week 10',
-  },
 ]
 
 const weeks = [
@@ -116,7 +103,7 @@ const weeks = [
   { n: 4, label: 'NDWI Flood Detection', done: true },
   { n: 5, label: 'U-Net Deep Learning Model', done: true },
   { n: '6–8', label: 'Alert System & Risk Mapping', done: true },
-  { n: '9–10', label: '3D Map & Multi-Hazard', done: true },
+  { n: '9', label: '3D Terrain Map', done: true },
   { n: '11–12', label: 'Evacuation Routes & Refinement', done: false },
   { n: '13–16', label: 'Deployment & Optimisation', done: false },
 ]

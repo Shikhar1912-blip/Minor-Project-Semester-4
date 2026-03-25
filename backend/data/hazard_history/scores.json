@@ -1,5 +1,63 @@
 [
   {
+    "composite_score": 40.0,
+    "severity": "Moderate",
+    "severity_color": "#eab308",
+    "breakdown": {
+      "flood": {
+        "score": 37.4,
+        "weight": 0.4
+      },
+      "elevation": {
+        "score": 45.0,
+        "weight": 0.2
+      },
+      "proximity": {
+        "score": 30.0,
+        "weight": 0.2
+      },
+      "population": {
+        "score": 50.0,
+        "weight": 0.2
+      }
+    },
+    "metadata": {
+      "water_percentage": 22.5,
+      "mask_filename": null,
+      "location": "Unknown",
+      "timestamp": "2026-03-25T17:22:35.935339"
+    }
+  },
+  {
+    "composite_score": 40.0,
+    "severity": "Moderate",
+    "severity_color": "#eab308",
+    "breakdown": {
+      "flood": {
+        "score": 37.4,
+        "weight": 0.4
+      },
+      "elevation": {
+        "score": 45.0,
+        "weight": 0.2
+      },
+      "proximity": {
+        "score": 30.0,
+        "weight": 0.2
+      },
+      "population": {
+        "score": 50.0,
+        "weight": 0.2
+      }
+    },
+    "metadata": {
+      "water_percentage": 22.5,
+      "mask_filename": null,
+      "location": "Unknown",
+      "timestamp": "2026-03-24T15:27:37.950753"
+    }
+  },
+  {
     "composite_score": 49.0,
     "severity": "Moderate",
     "severity_color": "#eab308",
