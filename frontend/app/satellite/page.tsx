@@ -90,7 +90,7 @@ export default function SatellitePage() {
             <div className="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-500/30 flex items-center justify-center text-xl">🛰️</div>
             <div>
               <h1 className="text-3xl font-bold text-white">Satellite Imagery</h1>
-              <p className="text-sm text-gray-500">Sentinel-2 real-time data · Week 2</p>
+              <p className="text-sm text-gray-500">Sentinel-2 real-time data</p>
             </div>
           </div>
         </div>

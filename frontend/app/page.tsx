@@ -1,295 +1,364 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { useEffect, useState, useRef } from 'react'
 
-interface SystemStatus {
-  backend: string
-  satellite_api: string
-  preprocessing: string
-  flood_detection: string
-  deep_learning: string
-  processed_tiles: number
-  flood_analyses: number
-  version: string
-  week: number
-}
-
-const modules = [
+/* ────────────────────────── Module Data (no week labels) ────────────────────────── */
+const features = [
   {
-    week: 2,
     icon: '🛰️',
-    title: 'Satellite Imagery',
-    description: 'Fetch real-time Sentinel-2 imagery for any city worldwide',
+    title: 'Satellite Intelligence',
+    description: 'Real-time Sentinel-2 imagery acquisition for any location on Earth.',
     href: '/satellite',
-    color: 'from-blue-600/20 to-blue-900/10',
-    border: 'border-blue-500/20',
-    badge: 'badge-blue',
-    btnColor: 'from-blue-600 to-blue-700',
-    glow: 'hover:glow-blue',
-    tag: 'Week 2',
+    gradient: 'from-blue-500/20 to-cyan-500/5',
+    iconBg: 'bg-blue-500/10 border-blue-500/20',
   },
   {
-    week: 3,
-    icon: '⚙️',
-    title: 'Image Preprocessing',
-    description: 'Tile, normalize and extract spectral bands from satellite data',
-    href: '/preprocess',
-    color: 'from-emerald-600/20 to-emerald-900/10',
-    border: 'border-emerald-500/20',
-    badge: 'badge-green',
-    btnColor: 'from-emerald-600 to-emerald-700',
-    glow: 'hover:glow-green',
-    tag: 'Week 3',
-  },
-  {
-    week: 4,
     icon: '💧',
     title: 'Flood Detection',
-    description: 'NDWI-based water body detection and flood extent mapping',
+    description: 'NDWI-based water body identification and flood extent mapping.',
     href: '/flood',
-    color: 'from-cyan-600/20 to-cyan-900/10',
-    border: 'border-cyan-500/20',
-    badge: 'badge-cyan',
-    btnColor: 'from-cyan-600 to-cyan-700',
-    glow: 'hover:glow-cyan',
-    tag: 'Week 4',
+    gradient: 'from-cyan-500/20 to-teal-500/5',
+    iconBg: 'bg-cyan-500/10 border-cyan-500/20',
   },
   {
-    week: 5,
     icon: '🧠',
-    title: 'Deep Learning Model',
-    description: 'U-Net flood segmentation — train a model and run predictions',
+    title: 'Deep Learning',
+    description: 'U-Net neural network for automated flood segmentation at scale.',
     href: '/model',
-    color: 'from-purple-600/20 to-purple-900/10',
-    border: 'border-purple-500/20',
-    badge: 'badge-purple',
-    btnColor: 'from-purple-600 to-violet-700',
-    glow: 'hover:glow-purple',
-    tag: 'Week 5',
+    gradient: 'from-violet-500/20 to-purple-500/5',
+    iconBg: 'bg-violet-500/10 border-violet-500/20',
   },
   {
-    week: 6,
     icon: '⚠️',
-    title: 'Alert System',
-    description: 'Automated risk classification and emergency alert dashboard',
+    title: 'Risk Assessment',
+    description: 'Multi-hazard scoring with automated alert classification.',
     href: '/alerts',
-    color: 'from-orange-600/20 to-red-900/10',
-    border: 'border-orange-500/20',
-    badge: 'badge-orange',
-    btnColor: 'from-orange-600 to-red-700',
-    glow: 'hover:glow-orange',
-    tag: 'Weeks 6-8',
+    gradient: 'from-orange-500/20 to-red-500/5',
+    iconBg: 'bg-orange-500/10 border-orange-500/20',
   },
   {
-    week: 9,
     icon: '🗺️',
-    title: '3D Terrain Map',
-    description: 'Interactive Mapbox 3D map with flood detection overlays',
+    title: '3D Terrain & Evacuation',
+    description: 'Interactive Mapbox terrain with real-time shelter routing.',
     href: '/map',
-    color: 'from-emerald-600/20 to-teal-900/10',
-    border: 'border-emerald-500/20',
-    badge: 'badge-green',
-    btnColor: 'from-emerald-600 to-teal-700',
-    glow: 'hover:glow-green',
-    tag: 'Week 9',
+    gradient: 'from-emerald-500/20 to-green-500/5',
+    iconBg: 'bg-emerald-500/10 border-emerald-500/20',
+  },
+  {
+    icon: '📊',
+    title: 'Analytics Dashboard',
+    description: 'City-by-city flood intelligence with population impact estimates.',
+    href: '/dashboard',
+    gradient: 'from-indigo-500/20 to-blue-500/5',
+    iconBg: 'bg-indigo-500/10 border-indigo-500/20',
   },
 ]
 
-const weeks = [
-  { n: 1, label: 'Foundation & Architecture', done: true },
-  { n: 2, label: 'Satellite API Integration', done: true },
-  { n: 3, label: 'Image Preprocessing Pipeline', done: true },
-  { n: 4, label: 'NDWI Flood Detection', done: true },
-  { n: 5, label: 'U-Net Deep Learning Model', done: true },
-  { n: '6–8', label: 'Alert System & Risk Mapping', done: true },
-  { n: '9', label: '3D Terrain Map', done: true },
-  { n: '11–12', label: 'Evacuation Routes & Refinement', done: false },
-  { n: '13–16', label: 'Deployment & Optimisation', done: false },
+const stats = [
+  { value: '5+', label: 'Cities Monitored' },
+  { value: '7.8M', label: 'Model Parameters' },
+  { value: '10m', label: 'Spatial Resolution' },
+  { value: '<2s', label: 'Detection Speed' },
+]
+
+const pipeline = [
+  { step: '01', title: 'Acquire', desc: 'Download multi-band imagery from ESA Sentinel-2 constellation', icon: '📡' },
+  { step: '02', title: 'Process', desc: 'Tile, normalize, and extract spectral bands (RGB + NIR)', icon: '⚙️' },
+  { step: '03', title: 'Detect', desc: 'Run NDWI analysis and U-Net inference to map flood extent', icon: '🔍' },
+  { step: '04', title: 'Respond', desc: 'Generate risk alerts, evacuation routes, and impact analytics', icon: '🚨' },
 ]
 
 export default function Home() {
-  const [status, setStatus] = useState<SystemStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [scrollY, setScrollY] = useState(0)
+  const [visible, setVisible] = useState<Set<string>>(new Set())
+  const heroRef = useRef<HTMLDivElement>(null)
 
-  const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  useEffect(() => {
+    const onScroll = () => setScrollY(window.scrollY)
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  const fetchStatus = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-      const res = await axios.get(`${API_URL}/api/status`)
-      setStatus(res.data)
-    } catch {
-      setError('Backend offline')
-    } finally {
-      setLoading(false)
-    }
-  }
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setVisible((prev) => new Set(prev).add(entry.target.id))
+          }
+        })
+      },
+      { threshold: 0.15 }
+    )
+    document.querySelectorAll('[data-animate]').forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
-  useEffect(() => { fetchStatus() }, [])
-
-  const statusItems = status ? [
-    { label: 'Backend', value: status.backend, ok: status.backend === 'operational' },
-    { label: 'Satellite API', value: status.satellite_api, ok: status.satellite_api === 'configured' },
-    { label: 'Preprocessing', value: status.preprocessing, ok: status.preprocessing === 'active' },
-    { label: 'Flood Detection', value: status.flood_detection, ok: status.flood_detection === 'active' },
-    { label: 'Deep Learning', value: status.deep_learning, ok: ['trained','active'].includes(status.deep_learning) },
-  ] : []
+  const isVisible = (id: string) => visible.has(id)
 
   return (
-    <main className="min-h-screen grid-bg text-white">
-      <div className="max-w-6xl mx-auto px-6 py-16">
+    <main className="min-h-screen bg-[#0a0e1a] text-white overflow-x-hidden">
 
-        {/* ── Hero ── */}
-        <div className="text-center mb-20">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium badge-blue mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></span>
-            Version {status?.version ?? '8.0.0'} · Week {status?.week ?? 8} of 16
+      {/* ═══════════ HERO — Full-viewport cinematic section ═══════════ */}
+      <section ref={heroRef} className="relative h-screen flex items-center justify-center overflow-hidden">
+        {/* Background image with parallax */}
+        <div
+          className="absolute inset-0 z-0"
+          style={{ transform: `translateY(${scrollY * 0.35}px)` }}
+        >
+          <img
+            src="/hero-flood.jpg"
+            alt=""
+            className="w-full h-[120%] object-cover"
+          />
+          {/* Dark gradient overlay */}
+          <div className="absolute inset-0 bg-gradient-to-b from-[#0a0e1a]/60 via-[#0a0e1a]/40 to-[#0a0e1a]" />
+          {/* Side vignette */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0a0e1a]/70 via-transparent to-[#0a0e1a]/70" />
+        </div>
+
+        {/* Animated network dots overlay */}
+        <div className="absolute inset-0 z-[1] opacity-30">
+          <div className="absolute top-[20%] left-[15%] w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
+          <div className="absolute top-[35%] left-[25%] w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-[25%] right-[20%] w-2 h-2 rounded-full bg-cyan-300 animate-pulse" style={{ animationDelay: '1s' }} />
+          <div className="absolute top-[45%] right-[30%] w-1 h-1 rounded-full bg-blue-300 animate-pulse" style={{ animationDelay: '1.5s' }} />
+          <div className="absolute bottom-[35%] left-[35%] w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" style={{ animationDelay: '0.3s' }} />
+        </div>
+
+        {/* Hero content */}
+        <div className="relative z-10 text-center px-6 max-w-4xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-xs text-gray-300 mb-8">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            AI-Powered Disaster Intelligence Platform
           </div>
-          <h1 className="text-6xl sm:text-7xl font-extrabold mb-5 tracking-tight gradient-text leading-tight">
-            Terra-Form
+
+          <h1 className="text-5xl sm:text-7xl lg:text-8xl font-extrabold tracking-tight mb-6 leading-[0.95]">
+            <span className="block gradient-text">Terra-Form</span>
           </h1>
-          <p className="text-xl text-gray-400 max-w-xl mx-auto leading-relaxed">
-            AI-driven satellite intelligence for real-time disaster detection, flood mapping, and emergency response planning.
+
+          <p className="text-lg sm:text-xl text-gray-300/80 max-w-2xl mx-auto leading-relaxed mb-10">
+            Transforming satellite imagery into actionable flood intelligence.
+            <br className="hidden sm:block" />
+            Detect. Assess. Respond — in real time.
           </p>
 
-          {/* Quick stats */}
-          {status && (
-            <div className="flex items-center justify-center gap-8 mt-10">
-              <div className="text-center">
-                <p className="text-3xl font-bold text-blue-400">{status.processed_tiles}</p>
-                <p className="text-xs text-gray-500 mt-1">Tiles Processed</p>
-              </div>
-              <div className="w-px h-10 bg-white/10"></div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-cyan-400">{status.flood_analyses}</p>
-                <p className="text-xs text-gray-500 mt-1">Flood Analyses</p>
-              </div>
-              <div className="w-px h-10 bg-white/10"></div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-emerald-400">6</p>
-                <p className="text-xs text-gray-500 mt-1">Modules Active</p>
-              </div>
-              <div className="w-px h-10 bg-white/10"></div>
-              <div className="text-center">
-                <p className="text-3xl font-bold text-purple-400">7.8M</p>
-                <p className="text-xs text-gray-500 mt-1">Model Parameters</p>
-              </div>
-            </div>
-          )}
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="/dashboard"
+              className="group px-8 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all duration-300 hover:-translate-y-0.5"
+            >
+              Open Dashboard
+              <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
+            </a>
+            <a
+              href="/map"
+              className="px-8 py-3.5 bg-white/5 border border-white/10 text-gray-300 font-medium rounded-xl hover:bg-white/10 hover:border-white/20 transition-all duration-300 backdrop-blur-sm"
+            >
+              Explore 3D Map
+            </a>
+          </div>
         </div>
 
-        {/* ── Module Cards ── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 mb-16">
-          {modules.map((m) => (
-            <a
-              key={m.week}
-              href={m.href}
-              className={`group glass rounded-2xl p-6 border ${m.border} bg-gradient-to-br ${m.color} ${m.glow} transition-all duration-300 hover:-translate-y-1 hover:border-opacity-50`}
-            >
-              <div className="flex items-start justify-between mb-4">
-                <div className="text-3xl">{m.icon}</div>
-                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${m.badge}`}>{m.tag}</span>
-              </div>
-              <h3 className="text-lg font-semibold text-white mb-1.5">{m.title}</h3>
-              <p className="text-sm text-gray-400 leading-relaxed mb-5">{m.description}</p>
-              <div className={`inline-flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg bg-gradient-to-r ${m.btnColor} text-white group-hover:opacity-90 transition-opacity`}>
-                Open Module
-                <svg className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                </svg>
-              </div>
-            </a>
+        {/* Scroll indicator */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-gray-400/50">
+          <span className="text-[10px] uppercase tracking-[0.2em]">Scroll</span>
+          <div className="w-px h-8 bg-gradient-to-b from-white/20 to-transparent animate-pulse" />
+        </div>
+      </section>
+
+
+      {/* ═══════════ STATS BAR ═══════════ */}
+      <section
+        id="stats-bar"
+        data-animate
+        className={`relative z-10 -mt-1 border-y border-white/5 bg-[#0a0e1a]/90 backdrop-blur-xl transition-all duration-1000 ${isVisible('stats-bar') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'}`}
+      >
+        <div className="max-w-6xl mx-auto px-6 py-8 grid grid-cols-2 md:grid-cols-4 gap-8">
+          {stats.map((s) => (
+            <div key={s.label} className="text-center">
+              <p className="text-3xl sm:text-4xl font-bold gradient-text">{s.value}</p>
+              <p className="text-xs text-gray-500 mt-1 uppercase tracking-wider">{s.label}</p>
+            </div>
           ))}
         </div>
+      </section>
 
-        {/* ── Bottom Row: System Status + Progress ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
-          {/* System Status */}
-          <div className="glass rounded-2xl p-6 border border-white/5">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-white">System Status</h2>
-              {loading ? (
-                <span className="text-xs text-gray-500">Checking...</span>
-              ) : error ? (
-                <span className="text-xs text-red-400">{error}</span>
-              ) : (
-                <span className="flex items-center gap-1.5 text-xs text-emerald-400">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                  All systems operational
-                </span>
-              )}
-            </div>
+      {/* ═══════════ PIPELINE — How It Works ═══════════ */}
+      <section className="relative py-28 overflow-hidden">
+        {/* Subtle background accent */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-blue-500/3 blur-[120px]" />
 
-            {loading && (
-              <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
-                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                Connecting to backend...
-              </div>
-            )}
-
-            {error && (
-              <div className="flex items-center justify-between rounded-lg bg-red-500/10 border border-red-500/20 p-4">
-                <p className="text-sm text-red-400">Backend not reachable on port 8000</p>
-                <button onClick={fetchStatus} className="text-xs px-3 py-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 rounded-lg transition-colors">
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {!loading && !error && (
-              <div className="space-y-3">
-                {statusItems.map((s) => (
-                  <div key={s.label} className="flex items-center justify-between">
-                    <span className="text-sm text-gray-400">{s.label}</span>
-                    <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${s.ok ? 'badge-green' : 'badge-gray'}`}>
-                      {s.value}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
+        <div className="max-w-6xl mx-auto px-6">
+          <div
+            id="pipeline-header"
+            data-animate
+            className={`text-center mb-16 transition-all duration-1000 ${isVisible('pipeline-header') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <p className="text-xs uppercase tracking-[0.25em] text-cyan-400 font-medium mb-3">How It Works</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">From Satellite to Response</h2>
           </div>
 
-          {/* Project Timeline */}
-          <div className="glass rounded-2xl p-6 border border-white/5">
-            <h2 className="text-base font-semibold text-white mb-5">Project Timeline</h2>
-            <div className="space-y-3">
-              {weeks.map((w) => (
-                <div key={String(w.n)} className="flex items-center gap-3">
-                  <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    w.done
-                      ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-gray-700/50 text-gray-500 border border-gray-600/30'
-                  }`}>
-                    {w.done ? '✓' : '·'}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {pipeline.map((p, i) => (
+              <div
+                key={p.step}
+                id={`pipeline-${i}`}
+                data-animate
+                className={`relative group transition-all duration-700 ${isVisible(`pipeline-${i}`) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+                style={{ transitionDelay: `${i * 150}ms` }}
+              >
+                {/* Connector line */}
+                {i < pipeline.length - 1 && (
+                  <div className="hidden md:block absolute top-8 left-[calc(50%+40px)] w-[calc(100%-40px)] h-px bg-gradient-to-r from-white/10 to-transparent" />
+                )}
+
+                <div className="glass rounded-2xl p-6 h-full border border-white/5 hover:border-cyan-500/20 transition-all duration-500 group-hover:-translate-y-1">
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl">{p.icon}</span>
+                    <span className="text-[10px] font-bold text-cyan-400/60 uppercase tracking-widest">{p.step}</span>
                   </div>
-                  <div className="flex-1 flex items-center justify-between">
-                    <span className={`text-sm ${w.done ? 'text-gray-200' : 'text-gray-500'}`}>{w.label}</span>
-                    <span className={`text-xs ${w.done ? 'badge-green' : 'badge-gray'} px-2 py-0.5 rounded-full`}>
-                      {w.done ? `Wk ${w.n}` : `Wk ${w.n}`}
-                    </span>
-                  </div>
+                  <h3 className="text-lg font-semibold text-white mb-2">{p.title}</h3>
+                  <p className="text-sm text-gray-400 leading-relaxed">{p.desc}</p>
                 </div>
-              ))}
-            </div>
-            <div className="mt-5 pt-4 border-t border-white/5">
-              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
-                <span>Overall Progress</span>
-                <span className="text-emerald-400 font-medium">8 / 16 weeks</span>
               </div>
-              <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
-                <div className="h-full bg-gradient-to-r from-blue-500 via-cyan-500 to-emerald-500 rounded-full" style={{ width: '50%' }}></div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* ═══════════ FEATURES — Module Grid ═══════════ */}
+      <section className="relative py-28">
+        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] rounded-full bg-violet-500/3 blur-[100px]" />
+
+        <div className="max-w-6xl mx-auto px-6">
+          <div
+            id="features-header"
+            data-animate
+            className={`text-center mb-16 transition-all duration-1000 ${isVisible('features-header') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <p className="text-xs uppercase tracking-[0.25em] text-violet-400 font-medium mb-3">Capabilities</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">End-to-End Flood Intelligence</h2>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {features.map((f, i) => (
+              <a
+                key={f.title}
+                href={f.href}
+                id={`feature-${i}`}
+                data-animate
+                className={`group glass rounded-2xl p-6 border border-white/5 bg-gradient-to-br ${f.gradient} hover:border-white/15 transition-all duration-500 hover:-translate-y-1 ${isVisible(`feature-${i}`) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+                style={{ transitionDelay: `${i * 100}ms` }}
+              >
+                <div className={`w-12 h-12 rounded-xl ${f.iconBg} border flex items-center justify-center text-2xl mb-5`}>
+                  {f.icon}
+                </div>
+                <h3 className="text-base font-semibold text-white mb-2 group-hover:text-cyan-300 transition-colors">{f.title}</h3>
+                <p className="text-sm text-gray-400 leading-relaxed mb-4">{f.description}</p>
+                <span className="text-xs text-cyan-400/70 font-medium group-hover:text-cyan-300 transition-colors flex items-center gap-1">
+                  Explore
+                  <svg suppressHydrationWarning className="w-3 h-3 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+
+      {/* ═══════════ VISUAL SHOWCASE — Side-by-side hero images ═══════════ */}
+      <section className="relative py-28 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-blue-500/3 to-transparent" />
+
+        <div className="max-w-6xl mx-auto px-6">
+          <div
+            id="showcase-header"
+            data-animate
+            className={`text-center mb-12 transition-all duration-1000 ${isVisible('showcase-header') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+          >
+            <p className="text-xs uppercase tracking-[0.25em] text-emerald-400 font-medium mb-3">Visual Intelligence</p>
+            <h2 className="text-3xl sm:text-4xl font-bold text-white">See the Impact. Plan the Response.</h2>
+          </div>
+
+          <div
+            id="showcase-images"
+            data-animate
+            className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-all duration-1000 ${isVisible('showcase-images') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
+          >
+            <div className="relative rounded-2xl overflow-hidden aspect-video group">
+              <img src="/hero-flood-2.jpg" alt="Flood detection AI analysis" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e1a] via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4">
+                <p className="text-xs text-cyan-400 font-medium mb-1">AI Network Analysis</p>
+                <p className="text-sm text-gray-300">Neural pathways mapping flood patterns in real-time</p>
+              </div>
+            </div>
+            <div className="relative rounded-2xl overflow-hidden aspect-video group">
+              <img src="/hero-flood-3.jpg" alt="Urban flood monitoring" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0e1a] via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-4">
+                <p className="text-xs text-emerald-400 font-medium mb-1">Urban Impact Assessment</p>
+                <p className="text-sm text-gray-300">Ground-level flood detection with satellite correlation</p>
               </div>
             </div>
           </div>
         </div>
+      </section>
 
-      </div>
+
+      {/* ═══════════ CTA SECTION ═══════════ */}
+      <section
+        id="cta"
+        data-animate
+        className={`relative py-28 transition-all duration-1000 ${isVisible('cta') ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-cyan-500/5 to-violet-500/5" />
+        <div className="max-w-3xl mx-auto px-6 text-center relative z-10">
+          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-4">
+            Ready to explore?
+          </h2>
+          <p className="text-gray-400 mb-10 text-lg">
+            Start analyzing satellite imagery, detect floods, and plan emergency response — all from one platform.
+          </p>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a
+              href="/satellite"
+              className="px-8 py-3.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white font-semibold rounded-xl hover:shadow-[0_0_30px_rgba(6,182,212,0.3)] transition-all duration-300 hover:-translate-y-0.5"
+            >
+              Get Started
+            </a>
+            <a
+              href="/compare"
+              className="px-8 py-3.5 bg-white/5 border border-white/10 text-gray-300 font-medium rounded-xl hover:bg-white/10 transition-all"
+            >
+              Before vs. After
+            </a>
+          </div>
+        </div>
+      </section>
+
+
+      {/* ═══════════ FOOTER ═══════════ */}
+      <footer className="border-t border-white/5 py-10">
+        <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-gradient-to-br from-blue-500 to-cyan-400 flex items-center justify-center text-[10px] font-bold">T</div>
+            <span className="text-sm text-gray-400">Terra-Form</span>
+          </div>
+          <p className="text-xs text-gray-600">AI-Driven Disaster Response Planning System</p>
+          <div className="flex gap-4">
+            <a href="/satellite" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Satellite</a>
+            <a href="/flood" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Flood</a>
+            <a href="/map" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Map</a>
+            <a href="/dashboard" className="text-xs text-gray-500 hover:text-gray-300 transition-colors">Dashboard</a>
+          </div>
+        </div>
+      </footer>
     </main>
   )
 }
-

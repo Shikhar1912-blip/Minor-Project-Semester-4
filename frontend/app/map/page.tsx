@@ -67,8 +67,20 @@ export default function MapPage() {
   const [selectedZone, setSelectedZone] = useState<FloodZone | null>(null)
   const [activeOverlayName, setActiveOverlayName] = useState<string>('')
 
+  // Routing state
+  const [routingState, setRoutingState] = useState<{
+    status: 'idle' | 'routing' | 'done' | 'error',
+    distance?: string,
+    duration?: string,
+    shelterName?: string,
+    errorMsg?: string
+  }>({ status: 'idle' })
+
   const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
   const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
+  const ORS_TOKEN = process.env.NEXT_PUBLIC_ORS_TOKEN || ''
+
+
 
   // ─── Initialize Map ───
   useEffect(() => {
@@ -279,6 +291,8 @@ export default function MapPage() {
   const navigateToZone = (zone: FloodZone) => {
     setSelectedZone(zone)
     if (!map.current) return
+    
+    clearRoute() // Clear existing route on selecting a new zone
 
     // Fly to the exact centroid
     map.current.flyTo({
@@ -303,7 +317,7 @@ export default function MapPage() {
           </div>
           <div style="font-size: 11px; color: #9ca3af; margin-bottom: 4px;">📍 <b>Rescue Coordinates</b></div>
           <div style="font-family: monospace; font-size: 13px; color: #38bdf8; margin-bottom: 8px;">
-            ${zone.centroid_lat}°N, ${zone.centroid_lng}°E
+            ${zone.centroid_lat.toFixed(5)}°N, ${zone.centroid_lng.toFixed(5)}°E
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px;">
             <div style="background: rgba(255,255,255,0.05); padding: 6px 8px; border-radius: 6px;">
@@ -321,9 +335,114 @@ export default function MapPage() {
           </a>
         </div>
       `)
-      .addTo(map.current!)
+      .addTo(map.current)
     popupRef.current = popup
   }
+
+  // ─── Mapbox Directions API for Evacuation Routing ───
+  const clearRoute = () => {
+    if (!map.current) return
+    document.querySelectorAll('.evac-marker').forEach(el => el.remove())
+    if (map.current.getLayer('evac-route-line')) map.current.removeLayer('evac-route-line')
+    if (map.current.getSource('evac-route')) map.current.removeSource('evac-route')
+    setRoutingState({ status: 'idle' })
+  }
+
+  const plotEvacuationRoute = async (zone: FloodZone) => {
+    if (!map.current || !MAPBOX_TOKEN) return
+    const m = map.current
+    
+    setRoutingState({ status: 'routing' })
+    try {
+      // 1. Get Nearest Shelter
+      const shelterRes = await axios.get(`${API_URL}/api/evacuation/nearest-shelter`, {
+        params: { lat: zone.centroid_lat, lng: zone.centroid_lng }
+      })
+      const shelter = shelterRes.data.shelter
+      
+      // 2. Fetch Mapbox Directions
+      const dirRes = await axios.get(`https://api.mapbox.com/directions/v5/mapbox/driving/${zone.centroid_lng},${zone.centroid_lat};${shelter.lng},${shelter.lat}?geometries=geojson&access_token=${MAPBOX_TOKEN}`)
+      
+      if (!dirRes.data.routes || dirRes.data.routes.length === 0) {
+        throw new Error('No land route found')
+      }
+      
+      const route = dirRes.data.routes[0]
+      const geojson = route.geometry
+      
+      const distance = (route.distance / 1000).toFixed(1) + ' km'
+      const duration = Math.round(route.duration / 60) + ' min'
+      
+      // 3. Draw on Map
+      if (m.getSource('evac-route')) {
+        (m.getSource('evac-route') as mapboxgl.GeoJSONSource).setData(geojson)
+      } else {
+        m.addSource('evac-route', {
+          type: 'geojson',
+          data: geojson
+        })
+        m.addLayer({
+          id: 'evac-route-line',
+          type: 'line',
+          source: 'evac-route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#06b6d4',
+            'line-width': 5,
+            'line-opacity': 0.8
+          }
+        })
+      }
+      
+      // 4. Add Destination Marker
+      document.querySelectorAll('.evac-marker').forEach(el => el.remove())
+      const el = document.createElement('div')
+      el.className = 'evac-marker'
+      el.innerHTML = '🏥'
+      el.style.fontSize = '24px'
+      el.style.cursor = 'pointer'
+      el.style.filter = 'drop-shadow(0 0 8px rgba(6,182,212,0.8))'
+      
+      new mapboxgl.Marker(el)
+        .setLngLat([shelter.lng, shelter.lat])
+        .setPopup(new mapboxgl.Popup({ offset: 25 }).setHTML(`
+          <div style="font-family: Inter, sans-serif; padding: 6px; color: #0f172a;">
+            <div style="font-weight: 800; font-size: 14px; margin-bottom: 2px;">${shelter.name}</div>
+            <div style="font-size: 11px; color: #64748b; margin-bottom: 4px;">${shelter.city} • Capacity: ${shelter.capacity}</div>
+            <div style="font-size: 11px; color: #10b981; font-weight: 600;">Safe Elev: ${shelter.elevation_m}m • Dist: ${shelter.distance_km}km</div>
+          </div>
+        `))
+        .addTo(m)
+      
+      // 5. Fit Bounds to show full route
+      const bounds = new mapboxgl.LngLatBounds(
+        [zone.centroid_lng, zone.centroid_lat],
+        [shelter.lng, shelter.lat]
+      )
+      
+      m.fitBounds(bounds, {
+        padding: { top: 100, bottom: 100, left: 350, right: 100 },
+        pitch: 45,
+        duration: 2000
+      })
+      
+      setRoutingState({
+        status: 'done',
+        distance,
+        duration,
+        shelterName: shelter.name
+      })
+
+    } catch (err: any) {
+      console.error('Evacuation Route Error:', err)
+      setRoutingState({ status: 'error', errorMsg: err.message || 'Routing failed' })
+    }
+  }
+
+
 
   // ─── Toggle overlay ───
   const toggleOverlay = (ov: Overlay) => {
@@ -480,8 +599,8 @@ export default function MapPage() {
                     </div>
                   </button>
                 ))}
-              </div>
-            )}
+            </div>
+          )}
           </div>
         </div>
 
@@ -520,9 +639,62 @@ export default function MapPage() {
               <div className="font-mono text-sm text-cyan-400 mb-2">
                 {selectedZone.centroid_lng.toFixed(6)}°E
               </div>
-              <div className="flex gap-3 text-[10px] text-gray-400">
+              <div className="flex gap-3 text-[10px] text-gray-400 mb-3">
                 <span>📐 {selectedZone.area_km2} km²</span>
                 <span>💧 {selectedZone.area_pct}%</span>
+              </div>
+              
+              {/* Routing UI */}
+              <div className="pt-3 border-t border-cyan-500/20">
+                {routingState.status === 'idle' && (
+                  <button 
+                    onClick={() => plotEvacuationRoute(selectedZone)}
+                    className="w-full py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-bold rounded-lg shadow-[0_0_15px_rgba(6,182,212,0.4)] transition-all flex items-center justify-center gap-2"
+                  >
+                    🚁 Plot Evacuation Route
+                  </button>
+                )}
+                {routingState.status === 'routing' && (
+                  <div className="w-full py-2 bg-cyan-900/40 text-cyan-400 text-xs font-bold rounded-lg flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-cyan-700 border-t-cyan-400 rounded-full animate-spin" />
+                    Calculating safe path...
+                  </div>
+                )}
+                {routingState.status === 'done' && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-400">Destination:</span>
+                      <span className="font-bold text-cyan-400 truncate ml-2">{routingState.shelterName}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] bg-black/20 p-2 rounded-md">
+                      <div className="flex flex-col">
+                        <span className="text-gray-500">Travel Time</span>
+                        <span className="font-bold text-white">{routingState.duration}</span>
+                      </div>
+                      <div className="flex flex-col text-right">
+                        <span className="text-gray-500">Distance</span>
+                        <span className="font-bold text-white">{routingState.distance}</span>
+                      </div>
+                    </div>
+                    <button 
+                      onClick={clearRoute}
+                      className="w-full py-1.5 mt-1 bg-white/5 hover:bg-white/10 text-gray-400 text-[10px] font-semibold rounded-md transition-all"
+                    >
+                      Clear Route
+                    </button>
+                  </div>
+                )}
+                {routingState.status === 'error' && (
+                  <div className="text-center">
+                    <div className="text-[11px] text-red-400 mb-2">Failed: {routingState.errorMsg}</div>
+                    <button 
+                      onClick={() => setRoutingState({ status: 'idle' })}
+                      className="px-4 py-1.5 bg-white/5 hover:bg-white/10 text-gray-300 text-[10px] rounded-md"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           )}

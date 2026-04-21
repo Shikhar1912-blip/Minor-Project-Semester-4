@@ -142,7 +142,7 @@ export default function FloodDetectionPage() {
             <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-xl">💧</div>
             <div>
               <h1 className="text-3xl font-bold text-white">Flood Detection</h1>
-              <p className="text-sm text-gray-500">NDWI water body analysis · Week 4</p>
+              <p className="text-sm text-gray-500">NDWI water body analysis</p>
             </div>
           </div>
         </div>

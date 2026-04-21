@@ -19,3 +19,6 @@ scipy>=1.11.0
 # Week 5: Deep Learning
 torch>=2.0.0
 torchvision>=0.15.0
+
+# Week 12: OpenRouteService routing
+httpx>=0.27.0

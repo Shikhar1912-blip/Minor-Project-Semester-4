@@ -31,7 +31,7 @@ from services.model_inference import get_inferencer, reload_inferencer
 app = FastAPI(
     title="Terra-Form API",
     description="AI-Driven Disaster Response Planning System",
-    version="9.0.0"  # Week 9
+    version="14.0.0"  # Week 14
 )
 
 # Configure CORS to allow frontend communication
@@ -73,6 +73,10 @@ alert_service = AlertService()
 # Week 9: Initialize Geospatial Service
 from services.geospatial_service import GeospatialService
 geo_service = GeospatialService()
+
+# Week 11: Initialize Evacuation Service
+from services.evacuation_service import EvacuationService
+evacuation_service = EvacuationService()
 
 
 # Simple state to avoid concurrent bulk classifications
@@ -1178,4 +1182,249 @@ async def get_saved_geojson(filename: str):
     data = json.loads(path.read_text(encoding="utf-8"))
     return {"status": "success", **data}
 
+# ============================================================
+#  Week 11 — Evacuation Routing
+# ============================================================
 
+@app.get("/api/evacuation/nearest-shelter")
+async def get_nearest_shelter(lat: float, lng: float):
+    """
+    Find the optimal evacuation shelter path given a starting coordinate.
+    """
+    try:
+        shelter = evacuation_service.get_nearest_shelter(lat, lng)
+        if not shelter:
+            raise HTTPException(status_code=404, detail="No suitable shelter found")
+        return {
+            "status": "success",
+            "shelter": shelter
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
+#  Week 13 — Before vs. After Comparison
+# ============================================================
+
+@app.get("/api/compare/cities")
+async def get_compare_cities():
+    """
+    Discover which cities have both satellite images AND flood results.
+    Returns image paths and basic flood statistics for each city.
+    """
+    import numpy as np
+
+    sat_dir = Path(__file__).parent / "data" / "satellite_images"
+    flood_dir = Path(__file__).parent / "data" / "flood_results"
+
+    cities = []
+    if sat_dir.exists():
+        for sat_file in sorted(sat_dir.glob("*.png")):
+            city_key = sat_file.stem.lower()
+            city_name = city_key.capitalize()
+
+            overlay = flood_dir / f"{city_key}_overlay.png"
+            heatmap = flood_dir / f"{city_key}_heatmap.png"
+            ndwi    = flood_dir / f"{city_key}_ndwi.png"
+            mask    = flood_dir / f"{city_key}_water_mask.png"
+
+            modes = []
+            if overlay.exists():
+                modes.append({"id": "overlay", "label": "Flood Overlay",
+                              "url": f"/api/flood/results/{city_key}_overlay.png"})
+            if heatmap.exists():
+                modes.append({"id": "heatmap", "label": "Heatmap",
+                              "url": f"/api/flood/results/{city_key}_heatmap.png"})
+            if ndwi.exists():
+                modes.append({"id": "ndwi", "label": "NDWI Map",
+                              "url": f"/api/flood/results/{city_key}_ndwi.png"})
+
+            if not modes:
+                continue
+
+            stats = {}
+            if mask.exists():
+                try:
+                    m = np.array(Image.open(mask).convert("L"))
+                    total = m.size
+                    water = int(np.sum(m > 128))
+                    stats = {
+                        "water_pixels": water,
+                        "total_pixels": total,
+                        "water_percentage": round(water / total * 100, 2) if total else 0,
+                        "water_area_km2": round(water * 100 / 1e6, 2),
+                    }
+                except Exception:
+                    pass
+
+            cities.append({
+                "city": city_name,
+                "key": city_key,
+                "satellite_url": f"/api/satellite/download/{sat_file.name}",
+                "modes": modes,
+                "stats": stats,
+            })
+
+    return {"status": "success", "count": len(cities), "cities": cities}
+
+
+# ============================================================
+#  Week 14 — Dashboard Statistics & Analytics
+# ============================================================
+
+@app.get("/api/dashboard/stats")
+async def get_dashboard_stats():
+    """
+    Aggregate statistics across every subsystem into a single analytics payload.
+    Powers the /dashboard page.
+    """
+    import numpy as np
+    from collections import Counter
+
+    data_root = Path(__file__).parent / "data"
+    sat_dir   = data_root / "satellite_images"
+    proc_dir  = data_root / "processed"
+    flood_dir = data_root / "flood_results"
+    alert_dir = data_root / "alerts"
+    hazard_dir = data_root / "hazard_history"
+
+    # ── Satellite imagery stats ──
+    sat_images = list(sat_dir.glob("*.png")) if sat_dir.exists() else []
+    total_sat_size_mb = round(sum(f.stat().st_size for f in sat_images) / (1024 * 1024), 1)
+
+    # ── Processed tiles ──
+    proc_tiles = list(proc_dir.glob("*.png")) if proc_dir.exists() else []
+
+    # ── Flood detection — per-city breakdown ──
+    city_flood_data = []
+    risk_distribution = Counter()
+    total_water_km2 = 0.0
+    total_affected_population = 0
+
+    if flood_dir.exists():
+        for mask_file in sorted(flood_dir.glob("*_water_mask.png")):
+            city_key = mask_file.stem.replace("_water_mask", "")
+            city_name = city_key.capitalize()
+            try:
+                m = np.array(Image.open(mask_file).convert("L"))
+                total = m.size
+                water = int(np.sum(m > 128))
+                pct = round(water / total * 100, 2) if total else 0
+                area = round(water * 100 / 1e6, 2)  # approx at 10m resolution
+                total_water_km2 += area
+
+                # Fetch real population dynamically via API
+                city_area_map = {
+                    "mumbai": 603,
+                    "delhi": 1484,
+                    "chennai": 426,
+                    "bangalore": 741,
+                    "hyderabad": 650,
+                    "kolkata": 206,
+                    "pune": 331,
+                    "ahmedabad": 464,
+                    "jaipur": 467,
+                    "lucknow": 349
+                }
+                
+                density = 10000  # Fallback
+                try:
+                    import httpx
+                    import urllib.parse
+                    city_query = urllib.parse.quote(f'name="{city_name}"')
+                    api_url = f"https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/geonames-all-cities-with-a-population-1000/records?where={city_query}&limit=1"
+                    
+                    with httpx.Client(timeout=3.0) as client:
+                        resp = client.get(api_url)
+                        if resp.status_code == 200:
+                            data = resp.json()
+                            if data.get("total_count", 0) > 0:
+                                real_pop = data["results"][0]["population"]
+                                city_area = city_area_map.get(city_key.lower(), 500)
+                                density = real_pop / city_area
+                except Exception:
+                    pass
+                
+                affected_population = int(area * density)
+                total_affected_population += affected_population
+
+                # Risk label from percentage
+                if pct > 35:
+                    risk = "Critical"
+                elif pct > 15:
+                    risk = "High"
+                elif pct > 5:
+                    risk = "Moderate"
+                else:
+                    risk = "Low"
+
+                risk_distribution[risk] += 1
+
+                has_overlay = (flood_dir / f"{city_key}_overlay.png").exists()
+                has_heatmap = (flood_dir / f"{city_key}_heatmap.png").exists()
+
+                city_flood_data.append({
+                    "city": city_name,
+                    "key": city_key,
+                    "water_percentage": pct,
+                    "water_area_km2": area,
+                    "water_pixels": water,
+                    "total_pixels": total,
+                    "risk": risk,
+                    "affected_population": affected_population,
+                    "has_overlay": has_overlay,
+                    "has_heatmap": has_heatmap,
+                })
+            except Exception:
+                pass
+
+    # Sort by water percentage descending
+    city_flood_data.sort(key=lambda x: x["water_percentage"], reverse=True)
+
+    # ── Alert history stats ──
+    alert_count = 0
+    recent_alerts = []
+    alerts_file = alert_dir / "alerts.json" if alert_dir.exists() else None
+    if alerts_file and alerts_file.exists():
+        import json as _json
+        try:
+            all_alerts = _json.loads(alerts_file.read_text(encoding="utf-8"))
+            alert_count = len(all_alerts)
+            recent_alerts = all_alerts[-5:]  # last 5
+        except Exception:
+            pass
+
+    # ── Hazard history stats ──
+    hazard_count = 0
+    if hazard_dir and hazard_dir.exists():
+        hazard_count = len(list(hazard_dir.glob("*.json")))
+
+    # ── Evacuation shelters ──
+    shelter_count = len(evacuation_service.shelters) if evacuation_service else 0
+
+    # ── Model status ──
+    best_model = MODEL_DIR / "best_model.pth"
+    model_trained = best_model.exists()
+    model_size_mb = round(best_model.stat().st_size / (1024 * 1024), 1) if model_trained else 0
+
+    return {
+        "status": "success",
+        "overview": {
+            "cities_analyzed": len(city_flood_data),
+            "satellite_images": len(sat_images),
+            "satellite_size_mb": total_sat_size_mb,
+            "processed_tiles": len(proc_tiles),
+            "flood_analyses": len(city_flood_data),
+            "total_water_km2": round(total_water_km2, 2),
+            "total_affected_pop": total_affected_population,
+            "alert_count": alert_count,
+            "hazard_scores": hazard_count,
+            "shelter_count": shelter_count,
+            "model_trained": model_trained,
+            "model_size_mb": model_size_mb,
+        },
+        "risk_distribution": dict(risk_distribution),
+        "city_breakdown": city_flood_data,
+        "recent_alerts": recent_alerts,
+    }
