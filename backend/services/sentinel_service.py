@@ -34,6 +34,11 @@ class SentinelService:
         self.config.sh_client_id = client_id
         self.config.sh_client_secret = client_secret
         
+        # Migrate to free Copernicus Data Space Ecosystem (CDSE)
+        # since Sentinel Hub trial accounts expire and Planet requires paid enterprise
+        self.config.sh_base_url = "https://sh.dataspace.copernicus.eu"
+        self.config.sh_token_url = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
+        
         # Create data directory if it doesn't exist
         self.data_dir = Path(__file__).parent.parent / "data" / "satellite_images"
         self.data_dir.mkdir(parents=True, exist_ok=True)
@@ -113,12 +118,19 @@ class SentinelService:
         }
         """
         
+        # Initialize CDSE-specific data collection because default enum uses legacy sentinel-hub url
+        cdse_collection = DataCollection.define_from(
+            DataCollection.SENTINEL2_L2A,
+            "SENTINEL2_L2A_CDSE",
+            service_url=self.config.sh_base_url
+        )
+        
         # Create request
         request = SentinelHubRequest(
             evalscript=evalscript,
             input_data=[
                 SentinelHubRequest.input_data(
-                    data_collection=DataCollection.SENTINEL2_L2A,
+                    data_collection=cdse_collection,
                     time_interval=(start_date.isoformat(), end_date.isoformat()),
                     maxcc=0.8  # Maximum cloud coverage 80% (more lenient)
                 )

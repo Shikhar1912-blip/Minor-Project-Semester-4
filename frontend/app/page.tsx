@@ -332,16 +332,7 @@ export default function Home() {
         </div>
       </footer>
       
-      {/* Required style for marquee animation */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes marquee {
-          0% { transform: translateX(0%); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-\\[marquee_40s_linear_infinite\\] {
-          animation: marquee 40s linear infinite;
-        }
-      `}} />
+      {/* Required style for marquee animation moved to globals.css */}
     </main>
   )
 }

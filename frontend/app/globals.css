@@ -147,3 +147,11 @@ body {
   background-size: 40px 40px;
 }
 
+@keyframes marquee {
+  0% { transform: translateX(0%); }
+  100% { transform: translateX(-50%); }
+}
+.animate-\\[marquee_40s_linear_infinite\\] {
+  animation: marquee 40s linear infinite;
+}
+
